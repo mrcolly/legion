@@ -357,15 +357,6 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
       }, 'Point clicked');
       
       handleInteraction();
-      
-      // Fly to point
-      if (globeRef.current) {
-        globeRef.current.pointOfView(
-          { lat: globePoint.lat, lng: globePoint.lng, altitude: 1.5 },
-          1000
-        );
-      }
-      
       onPointClick?.(globePoint.data);
     },
     [onPointClick, handleInteraction]
