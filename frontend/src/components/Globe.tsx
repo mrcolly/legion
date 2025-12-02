@@ -18,6 +18,7 @@ interface GlobeProps {
   data: GeoDataPoint[];
   pendingEvents?: GeoDataPoint[];
   autoRotate?: boolean;
+  dayMode?: boolean;
   onPointClick?: (point: GeoDataPoint) => void;
   onPointHover?: (point: GeoDataPoint | null) => void;
   onEventDismiss?: (id: string) => void;
@@ -120,7 +121,7 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
   return scatteredPositions;
 }
 
-export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClick, onPointHover, onEventDismiss, onAutoRotateChange }: GlobeProps) {
+export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = false, onPointClick, onPointHover, onEventDismiss, onAutoRotateChange }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -462,7 +463,7 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
     <>
       <GlobeGL
         ref={globeRef}
-        globeImageUrl="/textures/earth-night.jpg"
+        globeImageUrl={dayMode ? "/textures/earth-day.jpg" : "/textures/earth-night.jpg"}
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
         bumpImageUrl="/textures/earth-topology.png"
         // Points configuration

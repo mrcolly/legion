@@ -221,6 +221,16 @@
   border-color: rgba(78, 205, 196, 0.5);
 }
 
+.control-button.day-mode {
+  background: rgba(255, 200, 87, 0.2);
+  border-color: rgba(255, 200, 87, 0.5);
+}
+
+.control-button.night-mode {
+  background: rgba(100, 100, 180, 0.2);
+  border-color: rgba(100, 100, 180, 0.5);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .app-header {

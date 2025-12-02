@@ -6,10 +6,17 @@ import type { GeoDataPoint } from './types/GeoData';
 import { logger } from './utils/logger';
 import './App.css';
 
+// Check if it's daytime based on user's local time (6 AM - 6 PM)
+function isDaytime(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 6 && hour < 18;
+}
+
 function App() {
   const { data, loading, error, isConnected, lastUpdate, newDataCount, pendingEvents, dismissEvent } = useGeoData();
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [dayMode, setDayMode] = useState(isDaytime); // Auto-detect based on local time
 
   // Log app initialization
   useEffect(() => {
@@ -69,6 +76,7 @@ function App() {
           data={data}
           pendingEvents={pendingEvents}
           autoRotate={autoRotate}
+          dayMode={dayMode}
           onPointClick={handlePointClick}
           onEventDismiss={dismissEvent}
         />
@@ -82,6 +90,13 @@ function App() {
           title={autoRotate ? 'Stop rotation' : 'Start rotation'}
         >
           {autoRotate ? '⏸️' : '▶️'}
+        </button>
+        <button 
+          className={`control-button ${dayMode ? 'day-mode' : 'night-mode'}`}
+          onClick={() => setDayMode(!dayMode)}
+          title={dayMode ? 'Switch to night view' : 'Switch to day view'}
+        >
+          {dayMode ? '☀️' : '🌙'}
         </button>
       </div>
 
