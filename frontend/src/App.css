@@ -214,20 +214,145 @@
 }
 
 /* =============================================================================
-   Responsive
+   Responsive - Tablet
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .app-header {
+    top: 16px;
+    left: 16px;
+  }
+
+  .app-title {
+    font-size: 24px;
+    gap: 8px;
+  }
+
+  .title-icon {
+    font-size: 28px;
+  }
+
+  .app-subtitle {
+    font-size: 12px;
+  }
+
+  .error-content {
+    padding: 30px;
+    max-width: 350px;
+  }
+
+  .error-content h1 {
+    font-size: 22px;
+  }
+
+  :global(.globe-tooltip) {
+    max-width: 240px !important;
+    font-size: 12px !important;
+    padding: 10px 14px !important;
+  }
+}
+
+/* =============================================================================
+   Responsive - Mobile
    ============================================================================= */
 
 @media (max-width: 480px) {
   .app-header {
-    top: 10px;
-    left: 10px;
+    top: 12px;
+    left: 12px;
+    right: 12px;
   }
 
   .app-title {
-    font-size: 22px;
+    font-size: 20px;
+    gap: 6px;
   }
 
   .title-icon {
-    font-size: 26px;
+    font-size: 24px;
+  }
+
+  .app-subtitle {
+    font-size: 11px;
+    display: none; /* Hide subtitle on very small screens */
+  }
+
+  .loading-overlay p {
+    font-size: 13px;
+    padding: 0 20px;
+    text-align: center;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+  }
+
+  .error-screen {
+    padding: 20px;
+  }
+
+  .error-content {
+    padding: 24px;
+    width: 100%;
+    max-width: none;
+  }
+
+  .error-content h1 {
+    font-size: 20px;
+  }
+
+  .error-content p {
+    font-size: 13px;
+  }
+
+  .error-content button {
+    width: 100%;
+    padding: 14px 24px;
+  }
+
+  :global(.globe-tooltip) {
+    max-width: 200px !important;
+    font-size: 11px !important;
+    padding: 8px 12px !important;
+  }
+}
+
+/* =============================================================================
+   Responsive - Landscape Mobile
+   ============================================================================= */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-header {
+    top: 8px;
+    left: 8px;
+  }
+
+  .app-title {
+    font-size: 18px;
+  }
+
+  .title-icon {
+    font-size: 22px;
+  }
+
+  .app-subtitle {
+    display: none;
+  }
+}
+
+/* =============================================================================
+   Touch Device Optimizations
+   ============================================================================= */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .error-content button {
+    min-height: 48px;
+  }
+
+  .close-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }

@@ -174,10 +174,98 @@
   }
 }
 
-/* Responsive */
+/* Responsive - Tablet */
+@media (max-width: 768px) {
+  .event-toast {
+    min-width: 240px;
+    max-width: 340px;
+    padding: 14px 16px;
+  }
+
+  .event-toast-title {
+    font-size: 12px;
+  }
+
+  .event-toast-icon {
+    font-size: 22px;
+  }
+}
+
+/* Responsive - Mobile */
 @media (max-width: 520px) {
   .event-toast {
     min-width: auto;
-    max-width: calc(100vw - 40px);
+    max-width: calc(100vw - 32px);
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  /* Position at top of screen on mobile for better visibility */
+  .event-toast:not(.positioned):not(.hover-toast) {
+    top: 60px !important;
+    bottom: auto !important;
+  }
+
+  .event-toast-icon {
+    font-size: 20px;
+  }
+
+  .event-toast-title {
+    font-size: 12px;
+    -webkit-line-clamp: 2;
+    margin-bottom: 4px;
+  }
+
+  .event-toast-meta {
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .event-toast-source {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  .event-toast-location {
+    font-size: 10px;
+  }
+
+  .event-toast-description {
+    font-size: 10px;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Simpler pointer on mobile */
+  .event-toast.positioned .event-toast-pointer {
+    border-left-width: 8px;
+    border-right-width: 8px;
+    border-top-width: 8px;
+    bottom: -8px;
+  }
+}
+
+/* Landscape mobile - minimize toasts */
+@media (max-height: 500px) and (orientation: landscape) {
+  .event-toast {
+    padding: 10px 12px;
+    gap: 8px;
+    max-width: 280px;
+  }
+
+  .event-toast-icon {
+    font-size: 18px;
+  }
+
+  .event-toast-title {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  .event-toast-description {
+    display: none;
   }
 }
