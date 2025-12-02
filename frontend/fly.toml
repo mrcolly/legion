@@ -10,7 +10,7 @@ primary_region = 'ams'
   dockerfile = 'Dockerfile'
 
   [build.args]
-    VITE_API_URL = ''
+    VITE_API_URL = 'http://legion-backend.fly.dev'
 
 [http_service]
   internal_port = 80

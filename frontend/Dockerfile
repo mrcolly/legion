@@ -2,9 +2,12 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install Yarn
+RUN corepack enable && corepack prepare yarn@stable --activate
+
 # Copy package files and install ALL dependencies
-COPY package*.json ./
-RUN npm install
+COPY package.json yarn.lock ./
+RUN yarn install --immutable
 
 # Copy source
 COPY . .
@@ -13,7 +16,7 @@ COPY . .
 ARG VITE_API_URL=http://localhost:3000
 ENV VITE_API_URL=$VITE_API_URL
 
-RUN npm run build
+RUN yarn build
 
 # Production stage - serve with nginx
 FROM nginx:alpine AS runner
