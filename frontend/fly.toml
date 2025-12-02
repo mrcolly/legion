@@ -1,5 +1,8 @@
 # Fly.io configuration for Legion Frontend
 # Deploy with: fly launch --config fly.toml
+#
+# API requests are proxied through nginx to internal backend
+# No direct public access to backend needed!
 
 app = "legion-frontend"
 primary_region = "ams"
@@ -7,7 +10,8 @@ primary_region = "ams"
 [build]
   dockerfile = "Dockerfile"
   [build.args]
-    VITE_API_URL = "https://legion-backend.fly.dev"
+    # Empty = use same origin (nginx proxies /api/* to backend)
+    VITE_API_URL = ""
 
 [http_service]
   internal_port = 80

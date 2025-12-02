@@ -1,5 +1,8 @@
 # Fly.io configuration for Legion Backend
 # Deploy with: fly launch --config fly.toml
+# 
+# This backend is INTERNAL ONLY - accessible via:
+#   http://legion-backend.internal:3000
 
 app = "legion-backend"
 primary_region = "ams"
@@ -17,17 +20,14 @@ primary_region = "ams"
   USE_EONET = "true"
   LOG_LEVEL = "info"
 
-[http_service]
+# Internal service only - not publicly accessible
+[[services]]
   internal_port = 3000
-  force_https = true
-  auto_stop_machines = false  # Keep running for SSE
-  auto_start_machines = true
-  min_machines_running = 1    # Always have 1 machine for real-time
+  protocol = "tcp"
 
-  [http_service.concurrency]
-    type = "connections"
-    hard_limit = 250
-    soft_limit = 200
+  # Only allow connections from same Fly.io organization (private network)
+  [[services.ports]]
+    port = 3000
 
 [[vm]]
   memory = "256mb"
