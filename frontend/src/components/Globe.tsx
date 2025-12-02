@@ -126,16 +126,16 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
 
   /**
    * Convert lat/lng coordinates to screen position
+   * Returns null if point is on the back side of the globe (not visible)
    */
   const getScreenPosition = useCallback((lat: number, lng: number): { x: number; y: number } | null => {
     if (!globeRef.current) return null;
 
     const globe = globeRef.current;
-    const scene = globe.scene();
     const camera = globe.camera();
     const renderer = globe.renderer();
 
-    if (!scene || !camera || !renderer) return null;
+    if (!camera || !renderer) return null;
 
     // Convert lat/lng to 3D position on globe surface
     const GLOBE_RADIUS = 100; // Default globe radius in three-globe
@@ -148,6 +148,19 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
       GLOBE_RADIUS * Math.sin(phi) * Math.sin(theta)
     );
 
+    // Check if point is visible (facing the camera)
+    // The point's normal on a sphere is the same as its normalized position
+    const pointNormal = position.clone().normalize();
+    const cameraDirection = camera.position.clone().normalize();
+    
+    // Dot product: positive means point faces camera, negative means it's on back side
+    const dot = pointNormal.dot(cameraDirection);
+    
+    if (dot < 0.1) {
+      // Point is on the back side or edge of the globe - not visible
+      return null;
+    }
+
     // Project to screen coordinates
     const projected = position.clone().project(camera);
     const canvas = renderer.domElement;
@@ -155,30 +168,9 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
     const x = (projected.x * 0.5 + 0.5) * canvas.clientWidth;
     const y = (-projected.y * 0.5 + 0.5) * canvas.clientHeight;
 
-    // Check if point is visible (not behind the globe)
-    // Create a ray from camera to point
-    const cameraPosition = camera.position.clone();
-    const direction = position.clone().sub(cameraPosition).normalize();
-    const raycaster = new THREE.Raycaster(cameraPosition, direction);
-    
-    // Find globe mesh
-    let globeMesh: THREE.Mesh | null = null;
-    scene.traverse((obj: THREE.Object3D) => {
-      if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.SphereGeometry) {
-        globeMesh = obj;
-      }
-    });
-
-    if (globeMesh) {
-      const intersects = raycaster.intersectObject(globeMesh);
-      if (intersects.length > 0) {
-        // Check if intersection is before our point
-        const distToPoint = cameraPosition.distanceTo(position);
-        const distToIntersect = intersects[0].distance;
-        if (distToIntersect < distToPoint - 1) {
-          return null; // Point is behind the globe
-        }
-      }
+    // Also check if projected point is within screen bounds
+    if (x < 0 || x > canvas.clientWidth || y < 0 || y > canvas.clientHeight) {
+      return null;
     }
 
     return { x, y };
