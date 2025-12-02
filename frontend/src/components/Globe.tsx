@@ -8,6 +8,9 @@ const DEFAULT_ALTITUDE = 2.5;
 const MIN_ALTITUDE = 0.1;
 const MAX_ALTITUDE = 4.0;
 
+// Auto-rotation pause duration (ms)
+const AUTO_ROTATE_PAUSE_MS = 5000;
+
 interface GlobeProps {
   data: GeoDataPoint[];
   onPointClick?: (point: GeoDataPoint) => void;
@@ -56,8 +59,8 @@ function getPointSize(point: GeoDataPoint): number {
  * Points within the same grid cell get offset in a spiral pattern
  */
 function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number; lng: number }> {
-  const GRID_SIZE = 0.5; // ~50km grid cells
-  const SCATTER_RADIUS = 0.3; // Max scatter distance in degrees
+  const GRID_SIZE = 0.3; // ~30km grid cells (smaller = more sensitive)
+  const SCATTER_RADIUS = 1.0; // Max scatter distance in degrees (~100km)
   
   // Group points by grid cell
   const gridCells = new Map<string, GeoDataPoint[]>();
@@ -113,6 +116,7 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
 export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
+  const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Calculate point size multiplier based on zoom level (altitude)
@@ -125,8 +129,8 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
       (altitude - MIN_ALTITUDE) / (MAX_ALTITUDE - MIN_ALTITUDE)
     ));
     
-    // Scale factor: 0.3 when zoomed in, 1.0 when zoomed out
-    const scaleFactor = 0.3 + (normalizedAlt * 0.7);
+    // Scale factor: 0.1 when zoomed in, 1.0 when zoomed out
+    const scaleFactor = 0.1 + (normalizedAlt * 0.9);
     
     return baseSize * scaleFactor;
   }, [altitude]);
@@ -173,12 +177,29 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     }
   }, []);
 
-  // Stop rotation on user interaction
+  // Pause rotation on user interaction, resume after delay
   const handleInteraction = useCallback(() => {
     if (globeRef.current) {
       const controls = globeRef.current.controls();
       if (controls) {
+        // Stop auto-rotation
         controls.autoRotate = false;
+        
+        // Clear any existing timeout
+        if (autoRotateTimeoutRef.current) {
+          clearTimeout(autoRotateTimeoutRef.current);
+        }
+        
+        // Resume auto-rotation after delay
+        autoRotateTimeoutRef.current = setTimeout(() => {
+          if (globeRef.current) {
+            const ctrl = globeRef.current.controls();
+            if (ctrl) {
+              ctrl.autoRotate = true;
+              logger.debug('Auto-rotation resumed');
+            }
+          }
+        }, AUTO_ROTATE_PAUSE_MS);
       }
     }
   }, []);
@@ -217,9 +238,19 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     [onPointHover]
   );
 
-  // Handle zoom changes
+  // Handle zoom changes - also pause rotation
   const handleZoom = useCallback((pov: { lat: number; lng: number; altitude: number }) => {
     setAltitude(pov.altitude);
+    handleInteraction(); // Pause rotation when zooming
+  }, [handleInteraction]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoRotateTimeoutRef.current) {
+        clearTimeout(autoRotateTimeoutRef.current);
+      }
+    };
   }, []);
 
   return (
