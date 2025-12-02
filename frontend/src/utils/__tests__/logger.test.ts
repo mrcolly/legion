@@ -83,4 +83,3 @@ describe('Logger Utility', () => {
     expect(() => logger2.info('From logger 2')).not.toThrow();
   });
 });
-

@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
 // Mock import.meta.env
 Object.defineProperty(import.meta, 'env', {
@@ -24,4 +25,3 @@ class MockEventSource {
 }
 
 global.EventSource = MockEventSource as unknown as typeof EventSource;
-

@@ -249,4 +249,3 @@ describe('useGeoData Hook', () => {
     expect(result.current.lastUpdate).toBeInstanceOf(Date);
   });
 });
-
