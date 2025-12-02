@@ -17,6 +17,7 @@ function App() {
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [dayMode, setDayMode] = useState(isDaytime); // Auto-detect based on local time
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Log app initialization
   useEffect(() => {
@@ -82,22 +83,38 @@ function App() {
         />
       </div>
 
-      {/* Controls */}
-      <div className="globe-controls">
+      {/* Settings Menu */}
+      <div className={`settings-menu ${menuOpen ? 'open' : ''}`}>
         <button 
-          className={`control-button ${autoRotate ? 'active' : ''}`}
-          onClick={() => setAutoRotate(!autoRotate)}
-          title={autoRotate ? 'Stop rotation' : 'Start rotation'}
+          className="settings-toggle"
+          onClick={() => setMenuOpen(!menuOpen)}
+          title="Settings"
         >
-          {autoRotate ? '⏸️' : '▶️'}
+          ⚙️
         </button>
-        <button 
-          className={`control-button ${dayMode ? 'day-mode' : 'night-mode'}`}
-          onClick={() => setDayMode(!dayMode)}
-          title={dayMode ? 'Switch to night view' : 'Switch to day view'}
-        >
-          {dayMode ? '☀️' : '🌙'}
-        </button>
+        
+        {menuOpen && (
+          <div className="settings-panel">
+            <div className="settings-item">
+              <span className="settings-label">Auto-rotate</span>
+              <button 
+                className={`settings-button ${autoRotate ? 'active' : ''}`}
+                onClick={() => setAutoRotate(!autoRotate)}
+              >
+                {autoRotate ? 'On' : 'Off'}
+              </button>
+            </div>
+            <div className="settings-item">
+              <span className="settings-label">View</span>
+              <button 
+                className={`settings-button ${dayMode ? 'day' : 'night'}`}
+                onClick={() => setDayMode(!dayMode)}
+              >
+                {dayMode ? '☀️ Day' : '🌙 Night'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Info panel */}
