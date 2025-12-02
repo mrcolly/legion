@@ -123,6 +123,8 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const [eventPositions, setEventPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [hoveredPoint, setHoveredPoint] = useState<GeoDataPoint | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
 
   /**
    * Convert lat/lng coordinates to screen position
@@ -359,10 +361,41 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
   const handlePointHover = useCallback(
     (point: object | null) => {
       const globePoint = point as GlobePoint | null;
+      setHoveredPoint(globePoint?.data || null);
       onPointHover?.(globePoint?.data || null);
     },
     [onPointHover]
   );
+
+  // Update hover position
+  useEffect(() => {
+    if (!hoveredPoint) {
+      setHoverPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const pos = getScreenPosition(
+        hoveredPoint.location.latitude,
+        hoveredPoint.location.longitude
+      );
+      setHoverPosition(pos);
+    };
+
+    updatePosition();
+
+    // Keep updating while hovering (in case globe rotates)
+    let animationId: number;
+    const animate = () => {
+      updatePosition();
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [hoveredPoint, getScreenPosition]);
 
   // Handle zoom changes - just track altitude, don't pause rotation
   // (rotation pauses on click/drag via onGlobeClick)
@@ -393,17 +426,7 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
         pointAltitude={0.01}
         pointRadius={(d: object) => getZoomAdjustedSize((d as GlobePoint).size)}
         pointColor="color"
-        pointLabel={(d: any) => {
-          const point = d as GlobePoint;
-          return `
-            <div class="globe-tooltip">
-              <strong>${point.data.title}</strong>
-              <br/>
-              <small>${point.data.source}</small>
-              ${point.data.description ? `<br/><em>${point.data.description.substring(0, 100)}...</em>` : ''}
-            </div>
-          `;
-        }}
+        pointLabel={() => ''} // Disable default tooltip, we use EventToast instead
         pointResolution={12}
         onPointClick={handlePointClick}
         onPointHover={handlePointHover}
@@ -427,6 +450,16 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
           onDismiss={onEventDismiss ?? (() => {})}
         />
       ))}
+
+      {/* Hover toast */}
+      {hoveredPoint && hoverPosition && (
+        <EventToast
+          key={`hover-${hoveredPoint.id}`}
+          event={hoveredPoint}
+          position={hoverPosition}
+          isHover={true}
+        />
+      )}
     </>
   );
 }

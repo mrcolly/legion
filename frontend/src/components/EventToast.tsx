@@ -11,13 +11,17 @@ interface EventToastProps {
   event: GeoDataPoint;
   position?: Position | null;
   duration?: number;
-  onDismiss: (id: string) => void;
+  onDismiss?: (id: string) => void;
+  isHover?: boolean; // If true, no auto-dismiss
 }
 
-export function EventToast({ event, position, duration = 2000, onDismiss }: EventToastProps) {
+export function EventToast({ event, position, duration = 2000, onDismiss, isHover = false }: EventToastProps) {
   const [isFading, setIsFading] = useState(false);
 
   useEffect(() => {
+    // Skip auto-dismiss for hover mode
+    if (isHover) return;
+
     // Start fade out after duration - fade animation time
     const fadeTimer = setTimeout(() => {
       setIsFading(true);
@@ -25,14 +29,14 @@ export function EventToast({ event, position, duration = 2000, onDismiss }: Even
 
     // Dismiss after full duration
     const dismissTimer = setTimeout(() => {
-      onDismiss(event.id);
+      onDismiss?.(event.id);
     }, duration);
 
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(dismissTimer);
     };
-  }, [event.id, duration, onDismiss]);
+  }, [event.id, duration, onDismiss, isHover]);
 
   // Calculate position style - position above the point
   const getPositionStyle = (): React.CSSProperties => {
@@ -55,7 +59,7 @@ export function EventToast({ event, position, duration = 2000, onDismiss }: Even
 
   return (
     <div 
-      className={`event-toast positioned ${isFading ? 'fading' : ''}`}
+      className={`event-toast positioned ${isFading ? 'fading' : ''} ${isHover ? 'hover-toast' : ''}`}
       style={getPositionStyle()}
     >
       <div className="event-toast-pointer" />

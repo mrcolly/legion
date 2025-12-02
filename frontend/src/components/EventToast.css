@@ -153,6 +153,29 @@
   line-height: 1.4;
 }
 
+/* Hover toast - more subtle appearance */
+.event-toast.hover-toast {
+  animation: fadeIn 0.15s ease-out;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(78, 205, 196, 0.15);
+  border-color: rgba(78, 205, 196, 0.3);
+  z-index: 1500; /* Below event toasts */
+}
+
+.event-toast.hover-toast .event-toast-icon {
+  animation: none; /* No pulse for hover */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) translateY(-20px);
+  }
+}
+
 /* Responsive */
 @media (max-width: 520px) {
   .event-toast {
