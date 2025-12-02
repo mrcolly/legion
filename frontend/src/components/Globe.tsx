@@ -357,12 +357,31 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
     [onPointClick, handleInteraction]
   );
 
-  // Handle point hover
+  // Handle point hover - pause rotation while hovering
   const handlePointHover = useCallback(
     (point: object | null) => {
       const globePoint = point as GlobePoint | null;
       setHoveredGlobePoint(globePoint);
       onPointHover?.(globePoint?.data || null);
+
+      // Pause/resume auto-rotation based on hover state
+      if (globeRef.current) {
+        const controls = globeRef.current.controls();
+        if (controls && isInitializedRef.current) {
+          if (globePoint) {
+            // Hovering - stop rotation
+            controls.autoRotate = false;
+            // Clear any pending resume timeout
+            if (autoRotateTimeoutRef.current) {
+              clearTimeout(autoRotateTimeoutRef.current);
+              autoRotateTimeoutRef.current = null;
+            }
+          } else {
+            // Not hovering - resume rotation
+            controls.autoRotate = true;
+          }
+        }
+      }
     },
     [onPointHover]
   );
