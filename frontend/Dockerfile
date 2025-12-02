@@ -1,14 +1,11 @@
 # Frontend Dockerfile
-FROM node:20-alpine AS base
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install dependencies
-FROM base AS deps
+# Install ALL dependencies and build
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
-# Build stage
-FROM deps AS build
 COPY . .
 
 # Build with production API URL
@@ -24,7 +21,7 @@ FROM nginx:alpine AS runner
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
