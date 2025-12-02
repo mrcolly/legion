@@ -13,26 +13,31 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
-  "keywords": ["geolocation", "realtime", "visualization"],
+  "keywords": [
+    "geolocation",
+    "realtime",
+    "visualization"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
     "axios": "^1.6.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "pino": "^8.17.2",
-    "pino-pretty": "^10.3.1"
+    "pino-pretty": "^10.3.1",
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.10.5",
     "@types/supertest": "^6.0.2",
-    "typescript": "^5.3.3",
-    "tsx": "^4.7.0",
-    "vitest": "^1.1.0",
+    "@vitest/coverage-v8": "^1.1.0",
     "supertest": "^6.3.3",
-    "@vitest/coverage-v8": "^1.1.0"
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
   }
 }

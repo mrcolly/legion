@@ -187,4 +187,3 @@ describe('useEventQueue Hook', () => {
     expect(result.current.visibleEvents.length).toBeGreaterThanOrEqual(2);
   });
 });
-

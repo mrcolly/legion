@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { DataAggregator } from './services/DataAggregator';
 import { GDELTSource } from './sources/GDELTSource';
 import { DemoSource } from './sources/DemoSource';
+import { RSSSource } from './sources/RSSSource';
 import { createServer } from './api/server';
 import { logger } from './utils/logger';
 
@@ -13,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 // Configuration: Choose which data sources to enable
 const ENABLE_DEMO = process.env.USE_DEMO !== 'false'; // Default: enabled
 const ENABLE_GDELT = process.env.USE_GDELT === 'true'; // Default: disabled
+const ENABLE_RSS = process.env.USE_RSS === 'true'; // Default: disabled
 
 // Top-level code execution
 logger.info('🚀 Starting Legion Backend...');
@@ -23,25 +25,26 @@ const aggregator = new DataAggregator();
 // Register data sources
 // You can enable multiple sources simultaneously - they'll all be aggregated!
 
-  if (ENABLE_DEMO) {
-    logger.info('📊 Enabling Demo data source (for testing)');
-    aggregator.registerSource(new DemoSource());
-  }
-  
-  if (ENABLE_GDELT) {
-    logger.info('📰 Enabling GDELT news data source');
-    aggregator.registerSource(new GDELTSource());
-  }
+if (ENABLE_DEMO) {
+  logger.info('📊 Enabling Demo data source (for testing)');
+  aggregator.registerSource(new DemoSource());
+}
 
-  if (!ENABLE_DEMO && !ENABLE_GDELT) {
-    logger.warn('⚠️  No data sources enabled! Set USE_DEMO=true or USE_GDELT=true');
-    logger.warn('⚠️  Defaulting to Demo source...');
-    aggregator.registerSource(new DemoSource());
-  }
+if (ENABLE_GDELT) {
+  logger.info('📰 Enabling GDELT news data source');
+  aggregator.registerSource(new GDELTSource());
+}
 
-// Add more sources as needed:
-// aggregator.registerSource(new MastodonSource());
-// aggregator.registerSource(new RedditSource());
+if (ENABLE_RSS) {
+  logger.info('📡 Enabling RSS feeds data source (19 global news feeds)');
+  aggregator.registerSource(new RSSSource());
+}
+
+if (!ENABLE_DEMO && !ENABLE_GDELT && !ENABLE_RSS) {
+  logger.warn('⚠️  No data sources enabled! Set USE_DEMO=true, USE_GDELT=true, or USE_RSS=true');
+  logger.warn('⚠️  Defaulting to Demo source...');
+  aggregator.registerSource(new DemoSource());
+}
 
 // Initialize all sources
 await aggregator.initialize();
