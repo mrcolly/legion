@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import type { GeoDataPoint } from '../types/GeoData';
 import './EventToast.css';
 
@@ -8,69 +8,54 @@ interface Position {
 }
 
 interface EventToastProps {
-  event: GeoDataPoint | null;
+  event: GeoDataPoint;
   position?: Position | null;
   duration?: number;
-  onDismiss: () => void;
+  onDismiss: (id: string) => void;
 }
 
 export function EventToast({ event, position, duration = 2000, onDismiss }: EventToastProps) {
-  const [isVisible, setIsVisible] = useState(false);
   const [isFading, setIsFading] = useState(false);
-  const toastRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (event) {
-      // Show the toast
-      setIsVisible(true);
-      setIsFading(false);
+    // Start fade out after duration - fade animation time
+    const fadeTimer = setTimeout(() => {
+      setIsFading(true);
+    }, duration - 500);
 
-      // Start fade out after duration - fade animation time
-      const fadeTimer = setTimeout(() => {
-        setIsFading(true);
-      }, duration - 500);
+    // Dismiss after full duration
+    const dismissTimer = setTimeout(() => {
+      onDismiss(event.id);
+    }, duration);
 
-      // Dismiss after full duration
-      const dismissTimer = setTimeout(() => {
-        setIsVisible(false);
-        setIsFading(false);
-        onDismiss();
-      }, duration);
-
-      return () => {
-        clearTimeout(fadeTimer);
-        clearTimeout(dismissTimer);
-      };
-    }
-  }, [event, duration, onDismiss]);
-
-  if (!isVisible || !event) {
-    return null;
-  }
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(dismissTimer);
+    };
+  }, [event.id, duration, onDismiss]);
 
   // Calculate position style - position above the point
   const getPositionStyle = (): React.CSSProperties => {
     if (!position) {
-      // Fallback to center bottom if no position
-      return {
-        bottom: '30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-      };
+      // Fallback: don't render if no position
+      return { display: 'none' };
     }
 
     // Position the toast above the point
     return {
       left: `${position.x}px`,
       top: `${position.y}px`,
-      transform: 'translate(-50%, -100%) translateY(-20px)', // Center horizontally, position above point
+      transform: 'translate(-50%, -100%) translateY(-20px)',
     };
   };
 
+  if (!position) {
+    return null;
+  }
+
   return (
     <div 
-      ref={toastRef}
-      className={`event-toast ${isFading ? 'fading' : ''} ${position ? 'positioned' : ''}`}
+      className={`event-toast positioned ${isFading ? 'fading' : ''}`}
       style={getPositionStyle()}
     >
       <div className="event-toast-pointer" />

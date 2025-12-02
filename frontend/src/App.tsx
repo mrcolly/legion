@@ -7,7 +7,7 @@ import { logger } from './utils/logger';
 import './App.css';
 
 function App() {
-  const { data, loading, error, isConnected, lastUpdate, newDataCount, latestEvent, clearLatestEvent } = useGeoData();
+  const { data, loading, error, isConnected, lastUpdate, newDataCount, pendingEvents, dismissEvent } = useGeoData();
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
 
   // Log app initialization
@@ -66,9 +66,9 @@ function App() {
       <div className="globe-container">
         <Globe
           data={data}
-          latestEvent={latestEvent}
+          pendingEvents={pendingEvents}
           onPointClick={handlePointClick}
-          onEventDismiss={clearLatestEvent}
+          onEventDismiss={dismissEvent}
         />
       </div>
 

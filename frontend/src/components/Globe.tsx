@@ -15,10 +15,10 @@ const AUTO_ROTATE_PAUSE_MS = 5000;
 
 interface GlobeProps {
   data: GeoDataPoint[];
-  latestEvent?: GeoDataPoint | null;
+  pendingEvents?: GeoDataPoint[];
   onPointClick?: (point: GeoDataPoint) => void;
   onPointHover?: (point: GeoDataPoint | null) => void;
-  onEventDismiss?: () => void;
+  onEventDismiss?: (id: string) => void;
 }
 
 // Color mapping by source/category
@@ -117,12 +117,12 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
   return scatteredPositions;
 }
 
-export function Globe({ data, latestEvent, onPointClick, onPointHover, onEventDismiss }: GlobeProps) {
+export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, onEventDismiss }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
-  const [eventPosition, setEventPosition] = useState<{ x: number; y: number } | null>(null);
+  const [eventPositions, setEventPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
 
   /**
    * Convert lat/lng coordinates to screen position
@@ -184,28 +184,34 @@ export function Globe({ data, latestEvent, onPointClick, onPointHover, onEventDi
     return { x, y };
   }, []);
 
-  // Update event position when latestEvent changes or globe moves
+  // Update event positions when pendingEvents change or globe moves
   useEffect(() => {
-    if (!latestEvent) {
-      setEventPosition(null);
+    if (pendingEvents.length === 0) {
+      setEventPositions(new Map());
       return;
     }
 
-    const updatePosition = () => {
-      const pos = getScreenPosition(
-        latestEvent.location.latitude,
-        latestEvent.location.longitude
-      );
-      setEventPosition(pos);
+    const updatePositions = () => {
+      const newPositions = new Map<string, { x: number; y: number }>();
+      for (const event of pendingEvents) {
+        const pos = getScreenPosition(
+          event.location.latitude,
+          event.location.longitude
+        );
+        if (pos) {
+          newPositions.set(event.id, pos);
+        }
+      }
+      setEventPositions(newPositions);
     };
 
-    // Initial position
-    updatePosition();
+    // Initial positions
+    updatePositions();
 
-    // Update on animation frame while event is showing
+    // Update on animation frame while events are showing
     let animationId: number;
     const animate = () => {
-      updatePosition();
+      updatePositions();
       animationId = requestAnimationFrame(animate);
     };
     animationId = requestAnimationFrame(animate);
@@ -213,7 +219,7 @@ export function Globe({ data, latestEvent, onPointClick, onPointHover, onEventDi
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [latestEvent, getScreenPosition]);
+  }, [pendingEvents, getScreenPosition]);
 
   /**
    * Calculate point size multiplier based on zoom level (altitude)
@@ -419,13 +425,16 @@ export function Globe({ data, latestEvent, onPointClick, onPointHover, onEventDi
         onZoom={handleZoom}
       />
       
-      {/* Event toast positioned on the point */}
-      <EventToast
-        event={latestEvent ?? null}
-        position={eventPosition}
-        duration={2000}
-        onDismiss={onEventDismiss ?? (() => {})}
-      />
+      {/* Event toasts positioned on points */}
+      {pendingEvents.map((event) => (
+        <EventToast
+          key={event.id}
+          event={event}
+          position={eventPositions.get(event.id) ?? null}
+          duration={2000}
+          onDismiss={onEventDismiss ?? (() => {})}
+        />
+      ))}
     </>
   );
 }

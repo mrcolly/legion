@@ -17,8 +17,8 @@ interface UseGeoDataReturn {
   isConnected: boolean;
   lastUpdate: Date | null;
   newDataCount: number;
-  latestEvent: GeoDataPoint | null;
-  clearLatestEvent: () => void;
+  pendingEvents: GeoDataPoint[];
+  dismissEvent: (id: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -34,12 +34,12 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [newDataCount, setNewDataCount] = useState(0);
-  const [latestEvent, setLatestEvent] = useState<GeoDataPoint | null>(null);
+  const [pendingEvents, setPendingEvents] = useState<GeoDataPoint[]>([]);
   
   const dataMapRef = useRef<Map<string, GeoDataPoint>>(new Map());
 
-  const clearLatestEvent = useCallback(() => {
-    setLatestEvent(null);
+  const dismissEvent = useCallback((id: string) => {
+    setPendingEvents(prev => prev.filter(e => e.id !== id));
   }, []);
 
   // Fetch initial data
@@ -89,8 +89,12 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       
       if (addedCount > 0) {
         logger.info({ addedCount, totalCount: dataMapRef.current.size }, 'New points added');
-        // Set the latest event for toast notification
-        setLatestEvent(event.newData[0]);
+        // Add all new events to pending events for toast notifications
+        const newEvents = event.newData.filter(point => {
+          const key = point.hash || point.id;
+          return dataMapRef.current.has(key);
+        });
+        setPendingEvents(prev => [...newEvents, ...prev].slice(0, 20)); // Keep max 20 pending
       }
       
       // Update state with sorted data (newest first)
@@ -143,8 +147,8 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     isConnected,
     lastUpdate,
     newDataCount,
-    latestEvent,
-    clearLatestEvent,
+    pendingEvents,
+    dismissEvent,
     refresh,
   };
 }
