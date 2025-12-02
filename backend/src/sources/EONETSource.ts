@@ -26,7 +26,7 @@ interface EONETCategory {
   title: string;
 }
 
-interface EONETSource {
+interface EONETEventSource {
   id: string;
   url: string;
 }
@@ -38,7 +38,7 @@ interface EONETEvent {
   link: string;
   closed: string | null;
   categories: EONETCategory[];
-  sources: EONETSource[];
+  sources: EONETEventSource[];
   geometry: EONETGeometry[];
 }
 
