@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import GlobeGL from 'react-globe.gl';
 import type { GeoDataPoint, GlobePoint } from '../types/GeoData';
+import { globeLogger as logger } from '../utils/logger';
 
 interface GlobeProps {
   data: GeoDataPoint[];
@@ -50,6 +51,7 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
 
   // Transform data to globe point format
   const globePoints: GlobePoint[] = useMemo(() => {
+    logger.debug({ pointCount: data.length }, 'Transforming data to globe points');
     return data.map((point) => ({
       lat: point.location.latitude,
       lng: point.location.longitude,
@@ -63,6 +65,8 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
   // Auto-rotate the globe
   useEffect(() => {
     if (globeRef.current) {
+      logger.info('Globe initialized');
+      
       // Set initial point of view
       globeRef.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 1000);
       
@@ -71,6 +75,7 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
       if (controls) {
         controls.autoRotate = true;
         controls.autoRotateSpeed = 0.3;
+        logger.debug('Auto-rotation enabled');
       }
     }
   }, []);
@@ -87,26 +92,34 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
 
   // Handle point click
   const handlePointClick = useCallback(
-    (point: GlobePoint) => {
+    (point: object) => {
+      const globePoint = point as GlobePoint;
+      logger.info({ 
+        title: globePoint.data.title, 
+        lat: globePoint.lat, 
+        lng: globePoint.lng 
+      }, 'Point clicked');
+      
       handleInteraction();
       
       // Fly to point
       if (globeRef.current) {
         globeRef.current.pointOfView(
-          { lat: point.lat, lng: point.lng, altitude: 1.5 },
+          { lat: globePoint.lat, lng: globePoint.lng, altitude: 1.5 },
           1000
         );
       }
       
-      onPointClick?.(point.data);
+      onPointClick?.(globePoint.data);
     },
     [onPointClick, handleInteraction]
   );
 
   // Handle point hover
   const handlePointHover = useCallback(
-    (point: GlobePoint | null) => {
-      onPointHover?.(point?.data || null);
+    (point: object | null) => {
+      const globePoint = point as GlobePoint | null;
+      onPointHover?.(globePoint?.data || null);
     },
     [onPointHover]
   );

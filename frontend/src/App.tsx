@@ -1,15 +1,32 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Globe } from './components/Globe';
 import { InfoPanel } from './components/InfoPanel';
 import { useGeoData } from './hooks/useGeoData';
 import type { GeoDataPoint } from './types/GeoData';
+import { logger } from './utils/logger';
 import './App.css';
 
 function App() {
   const { data, loading, error, isConnected, lastUpdate, newDataCount } = useGeoData();
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
 
+  // Log app initialization
+  useEffect(() => {
+    logger.info('Legion app initialized');
+    return () => {
+      logger.info('Legion app unmounting');
+    };
+  }, []);
+
+  // Log connection status changes
+  useEffect(() => {
+    if (isConnected) {
+      logger.info('Connected to real-time stream');
+    }
+  }, [isConnected]);
+
   const handlePointClick = useCallback((point: GeoDataPoint) => {
+    logger.debug({ pointId: point.id, title: point.title }, 'Point selected');
     setSelectedPoint(point);
   }, []);
 

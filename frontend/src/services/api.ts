@@ -1,6 +1,9 @@
 import type { ApiResponse, GeoDataPoint, DataUpdateEvent } from '../types/GeoData';
+import { apiLogger, sseLogger } from '../utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+apiLogger.debug({ apiUrl: API_BASE_URL }, 'API client initialized');
 
 /**
  * Fetch all geo data points from the backend
@@ -86,22 +89,26 @@ export function subscribeToUpdates(
 ): () => void {
   const eventSource = new EventSource(`${API_BASE_URL}/api/stream`);
 
+  sseLogger.info('SSE connection established');
+
   eventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data) as DataUpdateEvent;
+      sseLogger.debug({ type: data.type, newCount: data.newDataCount }, 'SSE message received');
       onUpdate(data);
     } catch (error) {
-      console.error('Failed to parse SSE message:', error);
+      sseLogger.error({ error }, 'Failed to parse SSE message');
     }
   };
 
   eventSource.onerror = (error) => {
-    console.error('SSE connection error:', error);
+    sseLogger.error({ error }, 'SSE connection error');
     onError?.(error);
   };
 
   // Return cleanup function
   return () => {
+    sseLogger.info('SSE connection closed');
     eventSource.close();
   };
 }
