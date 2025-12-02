@@ -127,20 +127,27 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
 
   /**
-   * Convert lat/lng coordinates to screen position
+   * Convert lat/lng coordinates to screen position using globe.gl's built-in method
    * Returns null if point is on the back side of the globe (not visible)
    */
   const getScreenPosition = useCallback((lat: number, lng: number): { x: number; y: number } | null => {
     if (!globeRef.current) return null;
 
     const globe = globeRef.current;
+    
+    // Use globe.gl's built-in screen coordinate conversion
+    const screenCoords = globe.getScreenCoords(lat, lng, 0.01); // altitude matches pointAltitude
+    
+    if (!screenCoords) return null;
+    
+    const { x, y } = screenCoords;
+
+    // Check if point is visible by checking if it's on the front side of the globe
     const camera = globe.camera();
-    const renderer = globe.renderer();
+    if (!camera) return null;
 
-    if (!camera || !renderer) return null;
-
-    // Convert lat/lng to 3D position on globe surface
-    const GLOBE_RADIUS = 100; // Default globe radius in three-globe
+    // Get the 3D position of the point to check visibility
+    const GLOBE_RADIUS = 100;
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
 
@@ -150,29 +157,22 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
       GLOBE_RADIUS * Math.sin(phi) * Math.sin(theta)
     );
 
-    // Check if point is visible (facing the camera)
-    // The point's normal on a sphere is the same as its normalized position
+    // Check if point is facing the camera
     const pointNormal = position.clone().normalize();
     const cameraDirection = camera.position.clone().normalize();
-    
-    // Dot product: positive means point faces camera, negative means it's on back side
     const dot = pointNormal.dot(cameraDirection);
     
     if (dot < 0.1) {
-      // Point is on the back side or edge of the globe - not visible
-      return null;
+      return null; // Point is on the back side
     }
 
-    // Project to screen coordinates
-    const projected = position.clone().project(camera);
-    const canvas = renderer.domElement;
-
-    const x = (projected.x * 0.5 + 0.5) * canvas.clientWidth;
-    const y = (-projected.y * 0.5 + 0.5) * canvas.clientHeight;
-
-    // Also check if projected point is within screen bounds
-    if (x < 0 || x > canvas.clientWidth || y < 0 || y > canvas.clientHeight) {
-      return null;
+    // Check screen bounds
+    const renderer = globe.renderer();
+    if (renderer) {
+      const canvas = renderer.domElement;
+      if (x < 0 || x > canvas.clientWidth || y < 0 || y > canvas.clientHeight) {
+        return null;
+      }
     }
 
     return { x, y };
