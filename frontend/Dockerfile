@@ -2,10 +2,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install ALL dependencies and build
-COPY package.json package-lock.json ./
-RUN npm ci --include=dev
+# Copy package files and install ALL dependencies
+COPY package*.json ./
+RUN npm install
 
+# Copy source
 COPY . .
 
 # Build with production API URL
