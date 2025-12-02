@@ -17,6 +17,8 @@ interface UseGeoDataReturn {
   isConnected: boolean;
   lastUpdate: Date | null;
   newDataCount: number;
+  latestEvent: GeoDataPoint | null;
+  clearLatestEvent: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -32,8 +34,13 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [newDataCount, setNewDataCount] = useState(0);
+  const [latestEvent, setLatestEvent] = useState<GeoDataPoint | null>(null);
   
   const dataMapRef = useRef<Map<string, GeoDataPoint>>(new Map());
+
+  const clearLatestEvent = useCallback(() => {
+    setLatestEvent(null);
+  }, []);
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
@@ -82,6 +89,8 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       
       if (addedCount > 0) {
         logger.info({ addedCount, totalCount: dataMapRef.current.size }, 'New points added');
+        // Set the latest event for toast notification
+        setLatestEvent(event.newData[0]);
       }
       
       // Update state with sorted data (newest first)
@@ -134,6 +143,8 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     isConnected,
     lastUpdate,
     newDataCount,
+    latestEvent,
+    clearLatestEvent,
     refresh,
   };
 }

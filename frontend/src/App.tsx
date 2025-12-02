@@ -1,13 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Globe } from './components/Globe';
 import { InfoPanel } from './components/InfoPanel';
+import { EventToast } from './components/EventToast';
 import { useGeoData } from './hooks/useGeoData';
 import type { GeoDataPoint } from './types/GeoData';
 import { logger } from './utils/logger';
 import './App.css';
 
 function App() {
-  const { data, loading, error, isConnected, lastUpdate, newDataCount } = useGeoData();
+  const { data, loading, error, isConnected, lastUpdate, newDataCount, latestEvent, clearLatestEvent } = useGeoData();
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
 
   // Log app initialization
@@ -88,7 +89,14 @@ function App() {
         </h1>
         <p className="app-subtitle">Real-time Global Events</p>
       </header>
-      </div>
+
+      {/* Event toast notification */}
+      <EventToast 
+        event={latestEvent} 
+        duration={2000}
+        onDismiss={clearLatestEvent} 
+      />
+    </div>
   );
 }
 

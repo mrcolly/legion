@@ -1,0 +1,133 @@
+.event-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(10, 10, 20, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 320px;
+  max-width: 480px;
+  color: #fff;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(78, 205, 196, 0.2);
+  z-index: 2000;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 1;
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.event-toast.fading {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.event-toast-icon {
+  font-size: 24px;
+  line-height: 1;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.event-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-toast-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 6px;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.event-toast-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.event-toast-source {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+}
+
+.event-toast-source[data-source="GDELT"] {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.event-toast-source[data-source="Demo"] {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+}
+
+.event-toast-location {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.event-toast-description {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+  .event-toast {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .event-toast.fading {
+    transform: translateY(20px);
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
