@@ -1,0 +1,201 @@
+/* Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* App container */
+.app {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Globe container */
+.globe-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* App header */
+.app-header {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  color: #fff;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.app-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+.title-icon {
+  font-size: 32px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.app-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  color: #fff;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #4ecdc4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Error screen */
+.error-screen {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.error-content {
+  text-align: center;
+  max-width: 400px;
+  padding: 40px;
+}
+
+.error-content h1 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.error-content p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.error-hint {
+  font-size: 13px;
+}
+
+.error-content code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.error-content button {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-content button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+/* Globe tooltip styling (injected by globe.gl) */
+:global(.globe-tooltip) {
+  background: rgba(10, 10, 20, 0.95) !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  max-width: 280px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+:global(.globe-tooltip strong) {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+:global(.globe-tooltip small) {
+  color: #4ecdc4 !important;
+}
+
+:global(.globe-tooltip em) {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-style: normal !important;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .app-header {
+    top: 10px;
+    left: 10px;
+  }
+
+  .app-title {
+    font-size: 22px;
+  }
+
+  .title-icon {
+    font-size: 26px;
+  }
+}

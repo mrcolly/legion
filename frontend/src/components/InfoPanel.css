@@ -1,0 +1,215 @@
+.info-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 320px;
+  background: rgba(10, 10, 20, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  color: #fff;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  z-index: 1000;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Stats bar */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.connection-dot.connected {
+  background: #4ecdc4;
+  box-shadow: 0 0 10px #4ecdc4;
+}
+
+.connection-dot.disconnected {
+  background: #ff6b6b;
+  box-shadow: 0 0 10px #ff6b6b;
+  animation: none;
+}
+
+.new-data .stat-value {
+  color: #4ecdc4;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Point details */
+.point-details {
+  position: relative;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.close-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 107, 107, 0.3);
+  transform: scale(1.1);
+}
+
+.point-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+  color: #fff;
+}
+
+.point-meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.source-badge,
+.category-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.source-badge {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.source-badge[data-source="Demo"] {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+}
+
+.source-badge[data-source="GDELT"] {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.category-badge {
+  background: rgba(255, 230, 109, 0.2);
+  color: #ffe66d;
+}
+
+.point-description {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+}
+
+.point-location,
+.point-time {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+}
+
+.point-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.point-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Instructions */
+.instructions {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.instructions p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.instructions .hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .info-panel {
+    top: auto;
+    bottom: 20px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+  }
+}
+
