@@ -1,7 +1,9 @@
 import { useRef, useEffect, useMemo, useCallback, useState } from 'react';
 import GlobeGL from 'react-globe.gl';
+import * as THREE from 'three';
 import type { GeoDataPoint, GlobePoint } from '../types/GeoData';
 import { globeLogger as logger } from '../utils/logger';
+import { EventToast } from './EventToast';
 
 // Zoom configuration
 const DEFAULT_ALTITUDE = 2.5;
@@ -13,8 +15,10 @@ const AUTO_ROTATE_PAUSE_MS = 5000;
 
 interface GlobeProps {
   data: GeoDataPoint[];
+  latestEvent?: GeoDataPoint | null;
   onPointClick?: (point: GeoDataPoint) => void;
   onPointHover?: (point: GeoDataPoint | null) => void;
+  onEventDismiss?: () => void;
 }
 
 // Color mapping by source/category
@@ -113,11 +117,103 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
   return scatteredPositions;
 }
 
-export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
+export function Globe({ data, latestEvent, onPointClick, onPointHover, onEventDismiss }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
+  const [eventPosition, setEventPosition] = useState<{ x: number; y: number } | null>(null);
+
+  /**
+   * Convert lat/lng coordinates to screen position
+   */
+  const getScreenPosition = useCallback((lat: number, lng: number): { x: number; y: number } | null => {
+    if (!globeRef.current) return null;
+
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    const camera = globe.camera();
+    const renderer = globe.renderer();
+
+    if (!scene || !camera || !renderer) return null;
+
+    // Convert lat/lng to 3D position on globe surface
+    const GLOBE_RADIUS = 100; // Default globe radius in three-globe
+    const phi = (90 - lat) * (Math.PI / 180);
+    const theta = (lng + 180) * (Math.PI / 180);
+
+    const position = new THREE.Vector3(
+      -GLOBE_RADIUS * Math.sin(phi) * Math.cos(theta),
+      GLOBE_RADIUS * Math.cos(phi),
+      GLOBE_RADIUS * Math.sin(phi) * Math.sin(theta)
+    );
+
+    // Project to screen coordinates
+    const projected = position.clone().project(camera);
+    const canvas = renderer.domElement;
+
+    const x = (projected.x * 0.5 + 0.5) * canvas.clientWidth;
+    const y = (-projected.y * 0.5 + 0.5) * canvas.clientHeight;
+
+    // Check if point is visible (not behind the globe)
+    // Create a ray from camera to point
+    const cameraPosition = camera.position.clone();
+    const direction = position.clone().sub(cameraPosition).normalize();
+    const raycaster = new THREE.Raycaster(cameraPosition, direction);
+    
+    // Find globe mesh
+    let globeMesh: THREE.Mesh | null = null;
+    scene.traverse((obj: THREE.Object3D) => {
+      if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.SphereGeometry) {
+        globeMesh = obj;
+      }
+    });
+
+    if (globeMesh) {
+      const intersects = raycaster.intersectObject(globeMesh);
+      if (intersects.length > 0) {
+        // Check if intersection is before our point
+        const distToPoint = cameraPosition.distanceTo(position);
+        const distToIntersect = intersects[0].distance;
+        if (distToIntersect < distToPoint - 1) {
+          return null; // Point is behind the globe
+        }
+      }
+    }
+
+    return { x, y };
+  }, []);
+
+  // Update event position when latestEvent changes or globe moves
+  useEffect(() => {
+    if (!latestEvent) {
+      setEventPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const pos = getScreenPosition(
+        latestEvent.location.latitude,
+        latestEvent.location.longitude
+      );
+      setEventPosition(pos);
+    };
+
+    // Initial position
+    updatePosition();
+
+    // Update on animation frame while event is showing
+    let animationId: number;
+    const animate = () => {
+      updatePosition();
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [latestEvent, getScreenPosition]);
 
   /**
    * Calculate point size multiplier based on zoom level (altitude)
@@ -286,40 +382,50 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
   }, []);
 
   return (
-    <GlobeGL
-      ref={globeRef}
-      globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-      backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-      bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-      // Points configuration
-      pointsData={globePoints}
-      pointLat="lat"
-      pointLng="lng"
-      pointAltitude={0.01}
-      pointRadius={(d: object) => getZoomAdjustedSize((d as GlobePoint).size)}
-      pointColor="color"
-      pointLabel={(d: any) => {
-        const point = d as GlobePoint;
-        return `
-          <div class="globe-tooltip">
-            <strong>${point.data.title}</strong>
-            <br/>
-            <small>${point.data.source}</small>
-            ${point.data.description ? `<br/><em>${point.data.description.substring(0, 100)}...</em>` : ''}
-          </div>
-        `;
-      }}
-      pointResolution={12}
-      onPointClick={handlePointClick}
-      onPointHover={handlePointHover}
-      // Atmosphere
-      atmosphereColor="#3a228a"
-      atmosphereAltitude={0.25}
-      // Performance
-      animateIn={true}
-      // Interactivity
-      onGlobeClick={handleInteraction}
-      onZoom={handleZoom}
-    />
+    <>
+      <GlobeGL
+        ref={globeRef}
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        // Points configuration
+        pointsData={globePoints}
+        pointLat="lat"
+        pointLng="lng"
+        pointAltitude={0.01}
+        pointRadius={(d: object) => getZoomAdjustedSize((d as GlobePoint).size)}
+        pointColor="color"
+        pointLabel={(d: any) => {
+          const point = d as GlobePoint;
+          return `
+            <div class="globe-tooltip">
+              <strong>${point.data.title}</strong>
+              <br/>
+              <small>${point.data.source}</small>
+              ${point.data.description ? `<br/><em>${point.data.description.substring(0, 100)}...</em>` : ''}
+            </div>
+          `;
+        }}
+        pointResolution={12}
+        onPointClick={handlePointClick}
+        onPointHover={handlePointHover}
+        // Atmosphere
+        atmosphereColor="#3a228a"
+        atmosphereAltitude={0.25}
+        // Performance
+        animateIn={true}
+        // Interactivity
+        onGlobeClick={handleInteraction}
+        onZoom={handleZoom}
+      />
+      
+      {/* Event toast positioned on the point */}
+      <EventToast
+        event={latestEvent ?? null}
+        position={eventPosition}
+        duration={2000}
+        onDismiss={onEventDismiss ?? (() => {})}
+      />
+    </>
   );
 }

@@ -1,16 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { GeoDataPoint } from '../types/GeoData';
 import './EventToast.css';
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 interface EventToastProps {
   event: GeoDataPoint | null;
+  position?: Position | null;
   duration?: number;
   onDismiss: () => void;
 }
 
-export function EventToast({ event, duration = 2000, onDismiss }: EventToastProps) {
+export function EventToast({ event, position, duration = 2000, onDismiss }: EventToastProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isFading, setIsFading] = useState(false);
+  const toastRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (event) {
@@ -41,8 +48,32 @@ export function EventToast({ event, duration = 2000, onDismiss }: EventToastProp
     return null;
   }
 
+  // Calculate position style - position above the point
+  const getPositionStyle = (): React.CSSProperties => {
+    if (!position) {
+      // Fallback to center bottom if no position
+      return {
+        bottom: '30px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+      };
+    }
+
+    // Position the toast above the point
+    return {
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      transform: 'translate(-50%, -100%) translateY(-20px)', // Center horizontally, position above point
+    };
+  };
+
   return (
-    <div className={`event-toast ${isFading ? 'fading' : ''}`}>
+    <div 
+      ref={toastRef}
+      className={`event-toast ${isFading ? 'fading' : ''} ${position ? 'positioned' : ''}`}
+      style={getPositionStyle()}
+    >
+      <div className="event-toast-pointer" />
       <div className="event-toast-icon">📍</div>
       <div className="event-toast-content">
         <div className="event-toast-title">{event.title}</div>
@@ -63,4 +94,3 @@ export function EventToast({ event, duration = 2000, onDismiss }: EventToastProp
     </div>
   );
 }
-

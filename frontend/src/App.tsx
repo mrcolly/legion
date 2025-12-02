@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Globe } from './components/Globe';
 import { InfoPanel } from './components/InfoPanel';
-import { EventToast } from './components/EventToast';
 import { useGeoData } from './hooks/useGeoData';
 import type { GeoDataPoint } from './types/GeoData';
 import { logger } from './utils/logger';
@@ -67,7 +66,9 @@ function App() {
       <div className="globe-container">
         <Globe
           data={data}
+          latestEvent={latestEvent}
           onPointClick={handlePointClick}
+          onEventDismiss={clearLatestEvent}
         />
       </div>
 
@@ -89,13 +90,6 @@ function App() {
         </h1>
         <p className="app-subtitle">Real-time Global Events</p>
       </header>
-
-      {/* Event toast notification */}
-      <EventToast 
-        event={latestEvent} 
-        duration={2000}
-        onDismiss={clearLatestEvent} 
-      />
     </div>
   );
 }
