@@ -52,6 +52,7 @@ export const Globe = memo(function Globe({
 }: GlobeProps) {
   // Refs
   const globeRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const autoRotateEnabledRef = useRef(autoRotate);
@@ -62,9 +63,48 @@ export const Globe = memo(function Globe({
 
   // State
   const [altitude, setAltitude] = useState(GLOBE.DEFAULT_ALTITUDE);
+  const [dimensions, setDimensions] = useState({ width: globalThis.innerWidth, height: globalThis.innerHeight });
   const [eventPositions, setEventPositions] = useState<Map<string, ScreenPosition>>(new Map());
   const [hoveredGlobePoint, setHoveredGlobePoint] = useState<GlobePoint | null>(null);
   const [hoverPosition, setHoverPosition] = useState<ScreenPosition | null>(null);
+
+  // ---------------------------------------------------------------------------
+  // Handle window resize
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: globalThis.innerWidth,
+        height: globalThis.innerHeight,
+      });
+    };
+
+    globalThis.addEventListener('resize', handleResize);
+    // Also handle orientation change on mobile
+    globalThis.addEventListener('orientationchange', () => {
+      // Delay to let the browser settle
+      setTimeout(handleResize, 100);
+    });
+
+    return () => {
+      globalThis.removeEventListener('resize', handleResize);
+      globalThis.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  // Calculate responsive altitude (zoom out more on smaller screens)
+  const responsiveAltitude = useMemo(() => {
+    const minDimension = Math.min(dimensions.width, dimensions.height);
+    // On very small screens (< 400px), zoom out more to see the whole globe
+    if (minDimension < 400) {
+      return GLOBE.DEFAULT_ALTITUDE + 1;
+    }
+    // On small screens (< 600px), zoom out a bit
+    if (minDimension < 600) {
+      return GLOBE.DEFAULT_ALTITUDE + 0.5;
+    }
+    return GLOBE.DEFAULT_ALTITUDE;
+  }, [dimensions]);
 
   // ---------------------------------------------------------------------------
   // Sync autoRotate prop with ref and controls
@@ -311,7 +351,7 @@ export const Globe = memo(function Globe({
     }
     
     globe.pointOfView(
-      { lat: GLOBE.INITIAL_LAT, lng: GLOBE.INITIAL_LNG, altitude: GLOBE.DEFAULT_ALTITUDE },
+      { lat: GLOBE.INITIAL_LAT, lng: GLOBE.INITIAL_LNG, altitude: responsiveAltitude },
       GLOBE.ANIMATION_DURATION
     );
 
@@ -335,7 +375,7 @@ export const Globe = memo(function Globe({
     }, AUTO_ROTATE.INIT_DELAY);
 
     return () => clearTimeout(initTimeout);
-  }, [pauseAutoRotate, scheduleAutoRotateResume]);
+  }, [pauseAutoRotate, scheduleAutoRotateResume, responsiveAltitude]);
 
   // ---------------------------------------------------------------------------
   // Event handlers
@@ -421,9 +461,11 @@ export const Globe = memo(function Globe({
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <GlobeGL
         ref={globeRef}
+        width={dimensions.width}
+        height={dimensions.height}
         globeImageUrl={dayMode ? TEXTURES.EARTH_DAY : TEXTURES.EARTH_NIGHT}
         backgroundImageUrl={TEXTURES.BACKGROUND}
         bumpImageUrl={TEXTURES.EARTH_BUMP}
@@ -465,6 +507,6 @@ export const Globe = memo(function Globe({
           isHover={true}
         />
       )}
-    </>
+    </div>
   );
 });
