@@ -1,26 +1,23 @@
-# Fly.io configuration for Legion Frontend
-# Deploy with: fly launch --config fly.toml
+# fly.toml app configuration file generated for legion-frontend on 2025-12-02T13:38:03+01:00
 #
-# API requests are proxied through nginx to internal backend
-# No direct public access to backend needed!
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "legion"
-primary_region = "ams"
+app = 'legion-frontend'
+primary_region = 'ams'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
+
   [build.args]
-    # Empty = use same origin (nginx proxies /api/* to backend)
-    VITE_API_URL = ""
+    VITE_API_URL = ''
 
 [http_service]
   internal_port = 80
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
-  cpus = 1
+  size = 'shared-cpu-1x'
