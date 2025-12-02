@@ -117,6 +117,7 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitializedRef = useRef(false);
 
   /**
    * Calculate point size multiplier based on zoom level (altitude)
@@ -174,6 +175,12 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
         controls.autoRotateSpeed = 0.3;
         logger.debug('Auto-rotation enabled');
       }
+      
+      // Mark as initialized after initial animation completes
+      setTimeout(() => {
+        isInitializedRef.current = true;
+        logger.debug('Globe ready for user interaction');
+      }, 1500);
     }
   }, []);
 
@@ -238,10 +245,13 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     [onPointHover]
   );
 
-  // Handle zoom changes - also pause rotation
+  // Handle zoom changes - pause rotation only after initialization
   const handleZoom = useCallback((pov: { lat: number; lng: number; altitude: number }) => {
     setAltitude(pov.altitude);
-    handleInteraction(); // Pause rotation when zooming
+    // Only pause rotation on user-initiated zoom (after initial animation)
+    if (isInitializedRef.current) {
+      handleInteraction();
+    }
   }, [handleInteraction]);
 
   // Cleanup timeout on unmount
