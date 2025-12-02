@@ -4,7 +4,6 @@ import './InfoPanel.css';
 
 interface InfoPanelProps {
   point: GeoDataPoint | null;
-  totalCount: number;
   isConnected: boolean;
   lastUpdate: Date | null;
   newDataCount: number;
@@ -13,7 +12,6 @@ interface InfoPanelProps {
 
 export const InfoPanel = memo(function InfoPanel({
   point,
-  totalCount,
   isConnected,
   lastUpdate,
   newDataCount,
@@ -23,11 +21,7 @@ export const InfoPanel = memo(function InfoPanel({
     <div className="info-panel">
       {/* Stats header */}
       <div className="stats-bar">
-        <div className="stat">
-          <span className="stat-value">{totalCount}</span>
-          <span className="stat-label">Events</span>
-        </div>
-        <div className="stat">
+        <div className="stat stat-status">
           <span className={`connection-dot ${isConnected ? 'connected' : 'disconnected'}`} />
           <span className="stat-label">{isConnected ? 'Live' : 'Offline'}</span>
         </div>

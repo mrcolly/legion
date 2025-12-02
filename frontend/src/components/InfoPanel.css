@@ -30,6 +30,12 @@
   gap: 4px;
 }
 
+/* Status stat (Live/Offline) - horizontal layout */
+.stat-status {
+  flex-direction: row;
+  gap: 6px;
+}
+
 .stat-value {
   font-size: 18px;
   font-weight: 600;

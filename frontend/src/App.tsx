@@ -127,7 +127,6 @@ function App() {
       {/* Info panel */}
       <InfoPanel
         point={selectedPoint}
-        totalCount={data.length}
         isConnected={isConnected}
         lastUpdate={lastUpdate}
         newDataCount={newDataCount}
@@ -136,10 +135,7 @@ function App() {
 
       {/* Header */}
       <header className="app-header">
-        <h1 className="app-title">
-          <span className="title-icon">🌍</span>
-          Legion
-        </h1>
+        <h1 className="app-title">Legion</h1>
         <p className="app-subtitle">Real-time Global Events</p>
       </header>
     </div>

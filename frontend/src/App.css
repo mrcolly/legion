@@ -57,26 +57,8 @@
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin-bottom: 4px;
   text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
-}
-
-.title-icon {
-  font-size: 32px;
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
 }
 
 .app-subtitle {
@@ -230,11 +212,6 @@
 
   .app-title {
     font-size: 24px;
-    gap: 8px;
-  }
-
-  .title-icon {
-    font-size: 28px;
   }
 
   .app-subtitle {
@@ -270,11 +247,6 @@
 
   .app-title {
     font-size: 20px;
-    gap: 6px;
-  }
-
-  .title-icon {
-    font-size: 24px;
   }
 
   .app-subtitle {
@@ -335,10 +307,6 @@
 
   .app-title {
     font-size: 18px;
-  }
-
-  .title-icon {
-    font-size: 22px;
   }
 
   .app-subtitle {
