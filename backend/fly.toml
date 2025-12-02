@@ -16,6 +16,7 @@ primary_region = 'ams'
   USE_DEMO = 'false'
   USE_EONET = 'true'
   USE_GDELT = 'true'
+  USE_MASTODON = 'true'
   USE_RSS = 'true'
   USE_USGS = 'true'
 
