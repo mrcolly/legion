@@ -5,9 +5,11 @@ WORKDIR /app
 # Install Yarn
 RUN corepack enable && corepack prepare yarn@stable --activate
 
-# Copy package files and install ALL dependencies
-COPY package.json yarn.lock ./
-RUN yarn install
+# Copy package files and yarn config
+COPY package.json yarn.lock .yarnrc.yml ./
+
+# Install ALL dependencies
+RUN yarn install || yarn install --immutable
 
 # Copy source and build
 COPY . .
@@ -18,15 +20,10 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Install Yarn
-RUN corepack enable && corepack prepare yarn@stable --activate
-
-# Install production dependencies only
-COPY package.json yarn.lock ./
-RUN yarn install --production
-
-# Copy built files
+# Copy built files and node_modules from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \

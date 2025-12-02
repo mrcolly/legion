@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for legion-backend on 2025-12-02T13:36:09+01:00
+# fly.toml app configuration file for legion-backend
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -13,18 +13,24 @@ primary_region = 'ams'
   LOG_LEVEL = 'info'
   NODE_ENV = 'production'
   PORT = '3000'
-  USE_DEMO = 'true'
+  USE_DEMO = 'false'
   USE_EONET = 'true'
   USE_GDELT = 'true'
   USE_RSS = 'true'
   USE_USGS = 'true'
 
+# Internal service - only accessible via Fly.io private networking
+[http_service]
+  internal_port = 3000
+  force_https = false
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+# Make this service internal only (accessible via .internal DNS)
 [[services]]
   protocol = 'tcp'
   internal_port = 3000
-
-  [[services.ports]]
-    port = 3000
 
 [[vm]]
   size = 'shared-cpu-1x'

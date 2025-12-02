@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for legion-frontend on 2025-12-02T13:38:03+01:00
+# fly.toml app configuration file for legion
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -10,7 +10,8 @@ primary_region = 'ams'
   dockerfile = 'Dockerfile'
 
   [build.args]
-    VITE_API_URL = 'http://legion-backend.fly.dev'
+    # Empty URL = use relative paths, nginx proxies to internal backend
+    VITE_API_URL = ''
 
 [http_service]
   internal_port = 80

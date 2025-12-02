@@ -1,7 +1,11 @@
 import type { ApiResponse, GeoDataPoint, DataUpdateEvent } from '../types/GeoData';
 import { apiLogger, sseLogger } from '../utils/logger';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Use empty string for production (nginx proxies /api/* to backend)
+// Fall back to localhost:3000 for local development
+const API_BASE_URL = import.meta.env.VITE_API_URL !== undefined 
+  ? import.meta.env.VITE_API_URL 
+  : 'http://localhost:3000';
 
 apiLogger.debug({ apiUrl: API_BASE_URL }, 'API client initialized');
 
