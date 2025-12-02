@@ -62,6 +62,10 @@ export class GeoParser {
   private readonly options: Required<GeoParserOptions>;
   private lastRequestTime: number = 0;
   private readonly pendingRequests: Map<string, Promise<ParsedLocation | null>> = new Map();
+  
+  // Global request queue to enforce rate limiting across all sources
+  private readonly requestQueue: Array<() => void> = [];
+  private isProcessingQueue: boolean = false;
 
   constructor(options: GeoParserOptions = {}) {
     this.options = {
@@ -228,16 +232,11 @@ export class GeoParser {
   }
 
   /**
-   * Perform the actual geocoding request with rate limiting
+   * Perform the actual geocoding request with global rate limiting queue
    */
   private async doGeocode(placeName: string, cacheKey: string): Promise<ParsedLocation | null> {
-    // Rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - this.lastRequestTime;
-    if (timeSinceLastRequest < this.options.rateLimitDelay) {
-      await this.sleep(this.options.rateLimitDelay - timeSinceLastRequest);
-    }
-    this.lastRequestTime = Date.now();
+    // Wait for our turn in the queue (global rate limiting)
+    await this.waitForRateLimit();
 
     try {
       const results = await this.geocoder.geocode(placeName);
@@ -260,6 +259,41 @@ export class GeoParser {
       this.cacheResult(cacheKey, null);
       return null;
     }
+  }
+
+  /**
+   * Global rate limiting - ensures only 1 request per rateLimitDelay across all callers
+   */
+  private waitForRateLimit(): Promise<void> {
+    return new Promise((resolve) => {
+      this.requestQueue.push(resolve);
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Process the rate limit queue sequentially
+   */
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue) return;
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0) {
+      const now = Date.now();
+      const timeSinceLastRequest = now - this.lastRequestTime;
+      
+      if (timeSinceLastRequest < this.options.rateLimitDelay) {
+        await this.sleep(this.options.rateLimitDelay - timeSinceLastRequest);
+      }
+      
+      this.lastRequestTime = Date.now();
+      const resolve = this.requestQueue.shift();
+      if (resolve) {
+        resolve();
+      }
+    }
+
+    this.isProcessingQueue = false;
   }
 
   /**
