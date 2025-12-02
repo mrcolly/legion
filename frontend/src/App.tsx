@@ -1,25 +1,39 @@
+/**
+ * Main application component
+ */
+
 import { useState, useCallback, useEffect } from 'react';
 import { Globe } from './components/Globe';
 import { InfoPanel } from './components/InfoPanel';
+import { SettingsMenu } from './components/SettingsMenu';
 import { useGeoData } from './hooks/useGeoData';
-import type { GeoDataPoint } from './types/GeoData';
+import { isDaytime } from './utils/helpers';
 import { logger } from './utils/logger';
+import type { GeoDataPoint } from './types/GeoData';
 import './App.css';
 
-// Check if it's daytime based on user's local time (6 AM - 6 PM)
-function isDaytime(): boolean {
-  const hour = new Date().getHours();
-  return hour >= 6 && hour < 18;
-}
-
 function App() {
-  const { data, loading, error, isConnected, lastUpdate, newDataCount, pendingEvents, dismissEvent } = useGeoData();
+  // Data hook
+  const {
+    data,
+    loading,
+    error,
+    isConnected,
+    lastUpdate,
+    newDataCount,
+    pendingEvents,
+    dismissEvent,
+  } = useGeoData();
+
+  // UI state
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [dayMode, setDayMode] = useState(isDaytime); // Auto-detect based on local time
+  const [dayMode, setDayMode] = useState(isDaytime);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Log app initialization
+  // ---------------------------------------------------------------------------
+  // Logging
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     logger.info('Legion app initialized');
     return () => {
@@ -27,13 +41,15 @@ function App() {
     };
   }, []);
 
-  // Log connection status changes
   useEffect(() => {
     if (isConnected) {
       logger.info('Connected to real-time stream');
     }
   }, [isConnected]);
 
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
   const handlePointClick = useCallback((point: GeoDataPoint) => {
     logger.debug({ pointId: point.id, title: point.title }, 'Point selected');
     setSelectedPoint(point);
@@ -43,6 +59,21 @@ function App() {
     setSelectedPoint(null);
   }, []);
 
+  const handleMenuToggle = useCallback(() => {
+    setMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleAutoRotateChange = useCallback((enabled: boolean) => {
+    setAutoRotate(enabled);
+  }, []);
+
+  const handleDayModeChange = useCallback((enabled: boolean) => {
+    setDayMode(enabled);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Error state
+  // ---------------------------------------------------------------------------
   if (error) {
     return (
       <div className="error-screen">
@@ -50,17 +81,17 @@ function App() {
           <h1>⚠️ Connection Error</h1>
           <p>{error.message}</p>
           <p className="error-hint">
-            Make sure the backend is running at{' '}
-            <code>http://localhost:3000</code>
+            Make sure the backend is running at <code>http://localhost:3000</code>
           </p>
-          <button onClick={() => window.location.reload()}>
-            Retry Connection
-          </button>
+          <button onClick={() => window.location.reload()}>Retry Connection</button>
         </div>
       </div>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <div className="app">
       {/* Loading overlay */}
@@ -71,7 +102,7 @@ function App() {
         </div>
       )}
 
-      {/* Main globe */}
+      {/* Globe */}
       <div className="globe-container">
         <Globe
           data={data}
@@ -83,39 +114,15 @@ function App() {
         />
       </div>
 
-      {/* Settings Menu */}
-      <div className={`settings-menu ${menuOpen ? 'open' : ''}`}>
-        <button 
-          className="settings-toggle"
-          onClick={() => setMenuOpen(!menuOpen)}
-          title="Settings"
-        >
-          ⚙️
-        </button>
-        
-        {menuOpen && (
-          <div className="settings-panel">
-            <div className="settings-item">
-              <span className="settings-label">Auto-rotate</span>
-              <button 
-                className={`settings-button ${autoRotate ? 'active' : ''}`}
-                onClick={() => setAutoRotate(!autoRotate)}
-              >
-                {autoRotate ? 'On' : 'Off'}
-              </button>
-            </div>
-            <div className="settings-item">
-              <span className="settings-label">View</span>
-              <button 
-                className={`settings-button ${dayMode ? 'day' : 'night'}`}
-                onClick={() => setDayMode(!dayMode)}
-              >
-                {dayMode ? '☀️ Day' : '🌙 Night'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Settings */}
+      <SettingsMenu
+        isOpen={menuOpen}
+        onToggle={handleMenuToggle}
+        autoRotate={autoRotate}
+        onAutoRotateChange={handleAutoRotateChange}
+        dayMode={dayMode}
+        onDayModeChange={handleDayModeChange}
+      />
 
       {/* Info panel */}
       <InfoPanel
@@ -127,7 +134,7 @@ function App() {
         onClose={handleCloseDetails}
       />
 
-      {/* Title */}
+      {/* Header */}
       <header className="app-header">
         <h1 className="app-title">
           <span className="title-icon">🌍</span>
