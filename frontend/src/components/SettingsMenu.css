@@ -134,9 +134,10 @@
 /* Responsive - Mobile */
 @media (max-width: 480px) {
   .settings-menu {
-    /* Move to top-left on mobile, below header */
-    top: 70px;
-    left: 12px;
+    /* Move to top-right on mobile */
+    top: 12px;
+    right: 12px;
+    left: auto;
     bottom: auto;
     z-index: 1100;
   }
@@ -150,9 +151,11 @@
 
   .settings-panel {
     min-width: 140px;
-    /* Open downward on mobile */
+    /* Open downward and align to right on mobile */
     bottom: auto;
     top: 54px;
+    left: auto;
+    right: 0;
     padding: 10px;
   }
 
