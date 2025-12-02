@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Install Yarn
@@ -11,8 +11,11 @@ COPY package.json yarn.lock .yarnrc.yml ./
 # Install ALL dependencies
 RUN yarn install || yarn install --immutable
 
-# Copy source
+# Copy source (for dev mode)
 COPY . .
+
+# Builder stage (for production)
+FROM deps AS builder
 
 # Build with production API URL
 ARG VITE_API_URL=http://localhost:3000

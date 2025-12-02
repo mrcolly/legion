@@ -5,7 +5,7 @@
 import { useRef, useEffect, useMemo, useCallback, useState, memo } from 'react';
 import GlobeGL from 'react-globe.gl';
 import * as THREE from 'three';
-import type { GeoDataPoint, GlobePoint } from '../types/GeoData';
+import type { GeoDataPoint, GlobePoint, MovingObject } from '../types/GeoData';
 import { globeLogger as logger } from '../utils/logger';
 import { EventToast } from './EventToast';
 import { getPointColor, getPointSize, getZoomScale, scatterCrowdedPoints } from '../utils/pointUtils';
@@ -20,6 +20,7 @@ interface GlobeProps {
   pendingEvents?: GeoDataPoint[];
   autoRotate?: boolean;
   dayMode?: boolean;
+  movingObjects?: MovingObject[];
   onPointClick?: (point: GeoDataPoint) => void;
   onPointHover?: (point: GeoDataPoint | null) => void;
   onEventDismiss?: (id: string) => void;
@@ -46,6 +47,7 @@ export const Globe = memo(function Globe({
   pendingEvents = [],
   autoRotate = true,
   dayMode = false,
+  movingObjects = [],
   onPointClick,
   onPointHover,
   onEventDismiss,
@@ -253,10 +255,149 @@ export const Globe = memo(function Globe({
     [altitude]
   );
 
-  const pointRadiusCallback = useCallback(
-    (d: object) => (d as GlobePoint).size * zoomScaleFactor,
-    [zoomScaleFactor]
-  );
+  // ---------------------------------------------------------------------------
+  // Moving objects with smooth interpolation
+  // ---------------------------------------------------------------------------
+  
+  // Store ALL moving object state in ref (not in the data array that globe.gl sees)
+  const movingObjectStateRef = useRef<Map<string, {
+    lat: number;
+    lng: number;
+    latPerSec: number;
+    lngPerSec: number;
+    lastFrameTime: number;
+    color: string;
+  }>>(new Map());
+
+  // Update state when new positions arrive (but don't change movingObjectsData)
+  useEffect(() => {
+    const state = movingObjectStateRef.current;
+    
+    for (const obj of movingObjects) {
+      const existing = state.get(obj.id);
+      
+      if (obj.positions.length >= 2) {
+        const pos1 = obj.positions.at(-2)!;
+        const pos2 = obj.positions.at(-1)!;
+        
+        const time1 = new Date(pos1.timestamp).getTime();
+        const time2 = new Date(pos2.timestamp).getTime();
+        const deltaSeconds = (time2 - time1) / 1000;
+        
+        if (deltaSeconds > 0) {
+          let latPerSec = (pos2.latitude - pos1.latitude) / deltaSeconds;
+          let lngPerSec = (pos2.longitude - pos1.longitude) / deltaSeconds;
+          
+          // Handle longitude wrap-around
+          if (Math.abs(pos2.longitude - pos1.longitude) > 180) {
+            lngPerSec = pos2.longitude > pos1.longitude
+              ? (pos2.longitude - pos1.longitude - 360) / deltaSeconds
+              : (pos2.longitude - pos1.longitude + 360) / deltaSeconds;
+          }
+          
+          if (existing) {
+            // Just update velocity, keep current interpolated position
+            existing.latPerSec = latPerSec;
+            existing.lngPerSec = lngPerSec;
+          } else {
+            // New object - initialize
+            state.set(obj.id, {
+              lat: pos2.latitude,
+              lng: pos2.longitude,
+              latPerSec,
+              lngPerSec,
+              lastFrameTime: Date.now(),
+              color: obj.color || '#00ff88',
+            });
+          }
+        }
+      } else if (obj.positions.length === 1 && !existing) {
+        const pos = obj.positions[0];
+        state.set(obj.id, {
+          lat: pos.latitude,
+          lng: pos.longitude,
+          latPerSec: 0,
+          lngPerSec: 0,
+          lastFrameTime: Date.now(),
+          color: obj.color || '#00ff88',
+        });
+      }
+    }
+    
+    // Cleanup
+    const ids = new Set(movingObjects.map(o => o.id));
+    for (const id of state.keys()) {
+      if (!ids.has(id)) state.delete(id);
+    }
+  }, [movingObjects]);
+
+  // Moving objects data for custom layer (with interpolated positions)
+  const [movingObjectsRenderData, setMovingObjectsRenderData] = useState<Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    alt: number;
+    color: string;
+    name: string;
+    type: string;
+  }>>([]);
+
+  // Update moving objects positions - throttled to avoid re-render loops
+  useEffect(() => {
+    if (movingObjects.length === 0) {
+      setMovingObjectsRenderData([]);
+      return;
+    }
+
+    const UPDATE_INTERVAL = 1000; // Update every 1 second (slower to avoid click issues)
+    
+    const updatePositions = () => {
+      const now = Date.now();
+      const data: typeof movingObjectsRenderData = [];
+
+      for (const [id, state] of movingObjectStateRef.current.entries()) {
+        const deltaSec = (now - state.lastFrameTime) / 1000;
+
+        // Update position incrementally
+        if (deltaSec > 0 && deltaSec < 5) {
+          state.lat += state.latPerSec * deltaSec;
+          state.lng += state.lngPerSec * deltaSec;
+
+          // Clamp latitude
+          state.lat = Math.max(-90, Math.min(90, state.lat));
+
+          // Wrap longitude
+          if (state.lng > 180) state.lng -= 360;
+          if (state.lng < -180) state.lng += 360;
+        }
+        state.lastFrameTime = now;
+
+        // Find the original object for metadata
+        const obj = movingObjects.find(o => o.id === id);
+        if (obj) {
+          data.push({
+            id,
+            lat: state.lat,
+            lng: state.lng,
+            alt: 0.05,
+            color: state.color,
+            name: obj.name,
+            type: obj.type,
+          });
+        }
+      }
+
+      setMovingObjectsRenderData(data);
+    };
+
+    // Initial update
+    updatePositions();
+
+    // Set up interval for subsequent updates
+    const intervalId = setInterval(updatePositions, UPDATE_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [movingObjects]);
 
   // ---------------------------------------------------------------------------
   // Transform data to globe points (with stable references to prevent re-animation)
@@ -305,7 +446,7 @@ export const Globe = memo(function Globe({
     }
 
     return result;
-  }, [data]);
+  }, [data, movingObjects]);
 
   // ---------------------------------------------------------------------------
   // Auto-rotation helpers
@@ -428,6 +569,7 @@ export const Globe = memo(function Globe({
     [onPointHover, pauseAutoRotate, scheduleAutoRotateResume, getScreenPosition]
   );
 
+
   const handleZoom = useCallback(
     (pov: { lat: number; lng: number; altitude: number }) => {
       setAltitude(pov.altitude);
@@ -447,6 +589,79 @@ export const Globe = memo(function Globe({
   );
 
   // ---------------------------------------------------------------------------
+  // Trajectory lines (rendered directly in THREE.js scene)
+  // ---------------------------------------------------------------------------
+  const trajectoryLinesRef = useRef<Map<string, THREE.Line>>(new Map());
+
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const existingIds = new Set<string>();
+
+    for (const obj of movingObjects) {
+      if (obj.positions.length < 2) continue;
+      
+      existingIds.add(obj.id);
+      let line = trajectoryLinesRef.current.get(obj.id);
+
+      // Create line if it doesn't exist
+      if (!line) {
+        const geometry = new THREE.BufferGeometry();
+        const material = new THREE.LineBasicMaterial({
+          vertexColors: true,
+          transparent: true,
+        });
+        line = new THREE.Line(geometry, material);
+        line.frustumCulled = false;
+        scene.add(line);
+        trajectoryLinesRef.current.set(obj.id, line);
+      }
+
+      // Update line positions and colors (reversed: newest first, oldest last)
+      const positions: number[] = [];
+      const colors: number[] = [];
+      const trailAltitude = 0.05; // Same as object altitude
+      const baseColor = new THREE.Color(obj.color || '#00ff88');
+      const numPoints = obj.positions.length;
+
+      // Reverse order: start from newest (near object) to oldest (faded end)
+      for (let i = numPoints - 1; i >= 0; i--) {
+        const pos = obj.positions[i];
+        const coords = globe.getCoords(pos.latitude, pos.longitude, trailAltitude);
+        if (coords) {
+          positions.push(coords.x, coords.y, coords.z);
+          
+          // Fade: start (newest, near object) is bright, end (oldest) fades away
+          const fade = i / (numPoints - 1); // 1 at newest, 0 at oldest
+          colors.push(baseColor.r * fade, baseColor.g * fade, baseColor.b * fade);
+        }
+      }
+
+      if (positions.length >= 6) { // At least 2 points
+        const geometry = line.geometry as THREE.BufferGeometry;
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.attributes.position.needsUpdate = true;
+        geometry.attributes.color.needsUpdate = true;
+      }
+    }
+
+    // Remove lines for objects that no longer exist
+    for (const [id, line] of trajectoryLinesRef.current.entries()) {
+      if (!existingIds.has(id)) {
+        scene.remove(line);
+        line.geometry.dispose();
+        (line.material as THREE.Material).dispose();
+        trajectoryLinesRef.current.delete(id);
+      }
+    }
+  }, [movingObjects]);
+
+  // ---------------------------------------------------------------------------
   // Cleanup
   // ---------------------------------------------------------------------------
   useEffect(() => {
@@ -454,6 +669,17 @@ export const Globe = memo(function Globe({
       if (autoRotateTimeoutRef.current) {
         clearTimeout(autoRotateTimeoutRef.current);
       }
+      // Clean up trajectory lines
+      const globe = globeRef.current;
+      if (globe) {
+        const scene = globe.scene();
+        for (const line of trajectoryLinesRef.current.values()) {
+          scene?.remove(line);
+          line.geometry.dispose();
+          (line.material as THREE.Material).dispose();
+        }
+      }
+      trajectoryLinesRef.current.clear();
     };
   }, []);
 
@@ -469,17 +695,66 @@ export const Globe = memo(function Globe({
         globeImageUrl={dayMode ? TEXTURES.EARTH_DAY : TEXTURES.EARTH_NIGHT}
         backgroundImageUrl={TEXTURES.BACKGROUND}
         bumpImageUrl={TEXTURES.EARTH_BUMP}
+        // Data points
         pointsData={globePoints}
         pointLat="lat"
         pointLng="lng"
         pointAltitude={GLOBE.POINT_ALTITUDE}
-        pointRadius={pointRadiusCallback}
+        pointRadius={(d: object) => (d as GlobePoint).size * zoomScaleFactor}
         pointColor="color"
         pointLabel={() => ''}
         pointResolution={GLOBE.POINT_RESOLUTION}
         pointsTransitionDuration={0}
         onPointClick={handlePointClick}
         onPointHover={handlePointHover}
+        // Moving objects (satellites) using objects layer
+        objectsData={movingObjectsRenderData}
+        objectLat="lat"
+        objectLng="lng"
+        objectAltitude="alt"
+        objectThreeObject={(d: any) => {
+          const color = new THREE.Color(d.color || '#00ff88');
+          const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+          const material = new THREE.MeshBasicMaterial({ 
+            color,
+            transparent: true,
+            opacity: 0.9,
+          });
+          return new THREE.Mesh(geometry, material);
+        }}
+        objectLabel={() => ''}
+        onObjectClick={(obj: any) => {
+          try {
+            if (obj && typeof obj === 'object' && obj.id) {
+              handleInteraction();
+              const point: GeoDataPoint = {
+                id: obj.id,
+                title: obj.name || 'Unknown',
+                description: `Type: ${obj.type || 'unknown'}`,
+                source: 'Satellite Tracking',
+                timestamp: new Date().toISOString(),
+                location: { latitude: obj.lat || 0, longitude: obj.lng || 0 },
+              };
+              onPointClick?.(point);
+            }
+          } catch {
+            // Ignore click errors
+          }
+        }}
+        onObjectHover={(obj: any) => {
+          if (obj) {
+            pauseAutoRotate();
+            if (autoRotateTimeoutRef.current) {
+              clearTimeout(autoRotateTimeoutRef.current);
+              autoRotateTimeoutRef.current = null;
+            }
+          } else {
+            if (autoRotateEnabledRef.current) {
+              scheduleAutoRotateResume(AUTO_ROTATE.HOVER_PAUSE_DURATION);
+            }
+          }
+        }}
+        // Globe settings
         atmosphereColor={COLORS.ATMOSPHERE}
         atmosphereAltitude={0.25}
         animateIn={true}
@@ -507,6 +782,7 @@ export const Globe = memo(function Globe({
           isHover={true}
         />
       )}
+
     </div>
   );
 });

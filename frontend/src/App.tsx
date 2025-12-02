@@ -7,6 +7,7 @@ import { Globe } from './components/Globe';
 import { InfoPanel } from './components/InfoPanel';
 import { SettingsMenu } from './components/SettingsMenu';
 import { useGeoData } from './hooks/useGeoData';
+import { useMovingObjects } from './hooks/useMovingObjects';
 import { isDaytime } from './utils/helpers';
 import { logger } from './utils/logger';
 import type { GeoDataPoint } from './types/GeoData';
@@ -24,6 +25,9 @@ function App() {
     pendingEvents,
     dismissEvent,
   } = useGeoData();
+
+  // Moving objects hook (satellites, aircraft, etc.)
+  const { objects: movingObjects } = useMovingObjects();
 
   // UI state
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
@@ -46,6 +50,13 @@ function App() {
       logger.info('Connected to real-time stream');
     }
   }, [isConnected]);
+
+  useEffect(() => {
+    if (movingObjects.length > 0) {
+      logger.info({ count: movingObjects.length }, 'Tracking moving objects');
+    }
+  }, [movingObjects.length]);
+
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -83,7 +94,7 @@ function App() {
           <p className="error-hint">
             Make sure the backend is running at <code>http://localhost:3000</code>
           </p>
-          <button onClick={() => window.location.reload()}>Retry Connection</button>
+          <button onClick={() => globalThis.location.reload()}>Retry Connection</button>
         </div>
       </div>
     );
@@ -109,6 +120,7 @@ function App() {
           pendingEvents={pendingEvents}
           autoRotate={autoRotate}
           dayMode={dayMode}
+          movingObjects={movingObjects}
           onPointClick={handlePointClick}
           onEventDismiss={dismissEvent}
         />

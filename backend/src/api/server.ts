@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { DataAggregator } from '../services/DataAggregator';
+import { MovingObjectTracker } from '../services/MovingObjectTracker';
 import { logger } from '../utils/logger';
 
 // SSE client management
@@ -10,6 +11,30 @@ interface SSEClient {
 }
 
 const sseClients: SSEClient[] = [];
+
+// Optional moving objects tracker (can be null if disabled)
+let movingObjectTracker: MovingObjectTracker | null = null;
+
+export function setMovingObjectTracker(tracker: MovingObjectTracker | null): void {
+  movingObjectTracker = tracker;
+  
+  if (movingObjectTracker) {
+    // Listen for object updates and broadcast to SSE clients
+    movingObjectTracker.on('object-updated', (data) => {
+      broadcastToSSEClients({
+        type: 'moving-object',
+        ...data,
+      });
+    });
+    
+    movingObjectTracker.on('object-removed', (data) => {
+      broadcastToSSEClients({
+        type: 'moving-object-removed',
+        ...data,
+      });
+    });
+  }
+}
 
 export function createServer(aggregator: DataAggregator) {
   const app = express();
@@ -51,7 +76,7 @@ export function createServer(aggregator: DataAggregator) {
       }
       
       // Optional limit
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const limit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : undefined;
       if (limit && limit > 0) {
         data = data.slice(0, limit);
       }
@@ -124,10 +149,10 @@ export function createServer(aggregator: DataAggregator) {
         const lat = point.location.latitude;
         const lon = point.location.longitude;
         return (
-          lat >= parseFloat(minLat as string) &&
-          lat <= parseFloat(maxLat as string) &&
-          lon >= parseFloat(minLon as string) &&
-          lon <= parseFloat(maxLon as string)
+          lat >= Number.parseFloat(minLat as string) &&
+          lat <= Number.parseFloat(maxLat as string) &&
+          lon >= Number.parseFloat(minLon as string) &&
+          lon <= Number.parseFloat(maxLon as string)
         );
       });
 
@@ -141,7 +166,7 @@ export function createServer(aggregator: DataAggregator) {
       }
       
       // Optional limit
-      const limitNum = limit ? parseInt(limit as string, 10) : undefined;
+      const limitNum = limit ? Number.parseInt(limit as string, 10) : undefined;
       if (limitNum && limitNum > 0) {
         data = data.slice(0, limitNum);
       }
@@ -156,6 +181,60 @@ export function createServer(aggregator: DataAggregator) {
       res.status(500).json({
         success: false,
         error: 'Failed to filter data',
+      });
+    }
+  });
+
+  // Get all moving objects (satellites, aircraft, etc.)
+  app.get('/api/objects', (_req: Request, res: Response) => {
+    try {
+      if (!movingObjectTracker) {
+        return res.json({
+          success: true,
+          count: 0,
+          objects: [],
+        });
+      }
+
+      const objects = movingObjectTracker.getAllObjects();
+      res.json({
+        success: true,
+        count: objects.length,
+        objects,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Error getting moving objects');
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve moving objects',
+      });
+    }
+  });
+
+  // Get moving objects by type
+  app.get('/api/objects/:type', (req: Request, res: Response) => {
+    try {
+      const type = req.params.type as any;
+      
+      if (!movingObjectTracker) {
+        return res.json({
+          success: true,
+          count: 0,
+          objects: [],
+        });
+      }
+
+      const objects = movingObjectTracker.getObjectsByType(type);
+      res.json({
+        success: true,
+        count: objects.length,
+        objects,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Error getting moving objects by type');
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve moving objects',
       });
     }
   });
@@ -215,6 +294,7 @@ export function createServer(aggregator: DataAggregator) {
       clientId,
       timestamp: new Date(),
       totalDataPoints: aggregator.getCachedData().length,
+      movingObjects: movingObjectTracker?.getAllObjects() ?? [],
     })}\n\n`);
 
     // Send heartbeat every 30 seconds to keep connection alive

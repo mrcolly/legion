@@ -16,6 +16,7 @@ services:
       - USE_USGS=true
       - USE_EONET=true
       - USE_MASTODON=true
+      - USE_ISS=true
       - LOG_LEVEL=info
     restart: unless-stopped
     healthcheck:

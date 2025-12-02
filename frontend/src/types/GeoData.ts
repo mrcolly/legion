@@ -53,6 +53,48 @@ export interface GlobePoint {
   lng: number;
   size: number;
   color: string;
-  label: string;
+  label?: string;
   data: GeoDataPoint;
+  isMovingObject?: boolean;
+}
+
+/**
+ * Position for moving objects
+ */
+export interface Position {
+  latitude: number;
+  longitude: number;
+  altitude?: number;
+  timestamp: string;
+}
+
+/**
+ * Moving object (satellite, aircraft, ship, etc.)
+ */
+export interface MovingObject {
+  id: string;
+  name: string;
+  type: 'satellite' | 'aircraft' | 'ship' | 'vehicle' | 'other';
+  icon?: string;
+  color?: string;
+  velocity?: number;
+  positions: Position[]; // Last N positions for trajectory
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * SSE moving object update event
+ */
+export interface MovingObjectEvent {
+  type: 'moving-object';
+  object: MovingObject;
+  isNew: boolean;
+}
+
+/**
+ * SSE moving object removed event
+ */
+export interface MovingObjectRemovedEvent {
+  type: 'moving-object-removed';
+  id: string;
 }

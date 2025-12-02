@@ -6,7 +6,9 @@ import { RSSSource } from './sources/RSSSource';
 import { USGSSource } from './sources/USGSSource';
 import { EONETSource } from './sources/EONETSource';
 import { MastodonSource } from './sources/MastodonSource';
-import { createServer } from './api/server';
+import { MovingObjectTracker } from './services/MovingObjectTracker';
+import { ISSSource } from './sources/ISSSource';
+import { createServer, setMovingObjectTracker } from './api/server';
 import { logger } from './utils/logger';
 
 // Load environment variables
@@ -21,6 +23,7 @@ const ENABLE_RSS = process.env.USE_RSS === 'true'; // Default: disabled
 const ENABLE_USGS = process.env.USE_USGS === 'true'; // Default: disabled (earthquakes)
 const ENABLE_EONET = process.env.USE_EONET === 'true'; // Default: disabled (natural disasters)
 const ENABLE_MASTODON = process.env.USE_MASTODON === 'true'; // Default: disabled (social)
+const ENABLE_ISS = process.env.USE_ISS === 'true'; // Default: disabled (ISS tracking)
 
 // Top-level code execution
 logger.info('🚀 Starting Legion Backend...');
@@ -61,6 +64,21 @@ if (ENABLE_MASTODON) {
   aggregator.registerSource(new MastodonSource());
 }
 
+// Moving Objects Tracker (satellites, aircraft, ships - separate from events)
+let movingObjectTracker: MovingObjectTracker | null = null;
+let issSource: ISSSource | null = null;
+
+if (ENABLE_ISS) {
+  logger.info('🛰️ Enabling moving objects tracking');
+  movingObjectTracker = new MovingObjectTracker(100); // Keep last 100 positions for trajectory
+  setMovingObjectTracker(movingObjectTracker);
+  
+  // Add ISS source
+  logger.info('🛰️ Adding ISS (International Space Station) to tracking');
+  issSource = new ISSSource(movingObjectTracker, 5000); // Update every 5 seconds
+  issSource.start();
+}
+
 if (!ENABLE_DEMO && !ENABLE_GDELT && !ENABLE_RSS && !ENABLE_USGS && !ENABLE_EONET && !ENABLE_MASTODON) {
   logger.warn('⚠️  No data sources enabled!');
   logger.warn('⚠️  Set USE_DEMO, USE_GDELT, USE_RSS, USE_USGS, USE_EONET, or USE_MASTODON=true');
@@ -84,6 +102,8 @@ const server = app.listen(PORT, () => {
   logger.info('   GET  /api/data/bbox       - Filter by bounding box (supports ?sort&limit)');
   logger.info('   GET  /api/cache/stats     - Get cache statistics');
   logger.info('   POST /api/cache/clear     - Clear cache (debug only)');
+  logger.info('   GET  /api/objects         - Get all moving objects 🛰️');
+  logger.info('   GET  /api/objects/:type   - Get moving objects by type');
   logger.info('   GET  /api/stream          - Real-time SSE stream of new data 📡');
 });
 
@@ -105,6 +125,9 @@ logger.info('📡 Fetching initial data in background...');
 // Graceful shutdown
 const shutdown = async () => {
   logger.info('\n🛑 Shutting down gracefully...');
+  if (issSource) {
+    issSource.stop();
+  }
   await aggregator.cleanup();
   server.close(() => {
     logger.info('✅ Server closed');
