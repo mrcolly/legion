@@ -4,7 +4,7 @@
 # API requests are proxied through nginx to internal backend
 # No direct public access to backend needed!
 
-app = "legion-frontend"
+app = "legion"
 primary_region = "ams"
 
 [build]
