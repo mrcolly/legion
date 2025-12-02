@@ -430,10 +430,23 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
     };
   }, [hoveredGlobePoint, getScreenPosition]);
 
-  // Handle zoom changes - just track altitude, don't pause rotation
-  // (rotation pauses on click/drag via onGlobeClick)
+  // Handle zoom changes - adjust rotation speed based on altitude
   const handleZoom = useCallback((pov: { lat: number; lng: number; altitude: number }) => {
     setAltitude(pov.altitude);
+    
+    // Adjust auto-rotate speed based on zoom level
+    // Slower when zoomed in, faster when zoomed out
+    if (globeRef.current) {
+      const controls = globeRef.current.controls();
+      if (controls) {
+        // Normalize altitude to 0-1 range
+        const normalizedAlt = Math.max(0, Math.min(1, 
+          (pov.altitude - MIN_ALTITUDE) / (MAX_ALTITUDE - MIN_ALTITUDE)
+        ));
+        // Speed: 0.1 when fully zoomed in, 0.5 when fully zoomed out
+        controls.autoRotateSpeed = 0.1 + (normalizedAlt * 0.4);
+      }
+    }
   }, []);
 
   // Cleanup timeout on unmount
