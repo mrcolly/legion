@@ -382,9 +382,17 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
               autoRotateTimeoutRef.current = null;
             }
           } else {
-            // Not hovering - resume rotation only if enabled by user
+            // Not hovering - schedule resume after delay (same as other interactions)
             if (autoRotateEnabledRef.current) {
-              controls.autoRotate = true;
+              autoRotateTimeoutRef.current = setTimeout(() => {
+                if (globeRef.current && autoRotateEnabledRef.current) {
+                  const ctrl = globeRef.current.controls();
+                  if (ctrl) {
+                    ctrl.autoRotate = true;
+                    logger.debug('Auto-rotation resumed after hover');
+                  }
+                }
+              }, AUTO_ROTATE_PAUSE_MS);
             }
           }
         }
