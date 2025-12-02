@@ -1,7 +1,12 @@
-import { useRef, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useCallback, useState } from 'react';
 import GlobeGL from 'react-globe.gl';
 import type { GeoDataPoint, GlobePoint } from '../types/GeoData';
 import { globeLogger as logger } from '../utils/logger';
+
+// Zoom configuration
+const DEFAULT_ALTITUDE = 2.5;
+const MIN_ALTITUDE = 0.1;
+const MAX_ALTITUDE = 4.0;
 
 interface GlobeProps {
   data: GeoDataPoint[];
@@ -107,6 +112,24 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
 
 export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
   const globeRef = useRef<any>(null);
+  const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
+
+  /**
+   * Calculate point size multiplier based on zoom level (altitude)
+   * When zoomed in (low altitude), points should be smaller
+   * When zoomed out (high altitude), points should be larger
+   */
+  const getZoomAdjustedSize = useCallback((baseSize: number) => {
+    // Normalize altitude to 0-1 range
+    const normalizedAlt = Math.max(0, Math.min(1, 
+      (altitude - MIN_ALTITUDE) / (MAX_ALTITUDE - MIN_ALTITUDE)
+    ));
+    
+    // Scale factor: 0.3 when zoomed in, 1.0 when zoomed out
+    const scaleFactor = 0.3 + (normalizedAlt * 0.7);
+    
+    return baseSize * scaleFactor;
+  }, [altitude]);
 
   // Transform data to globe point format with scatter for crowded points
   const globePoints: GlobePoint[] = useMemo(() => {
@@ -194,6 +217,11 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     [onPointHover]
   );
 
+  // Handle zoom changes
+  const handleZoom = useCallback((pov: { lat: number; lng: number; altitude: number }) => {
+    setAltitude(pov.altitude);
+  }, []);
+
   return (
     <GlobeGL
       ref={globeRef}
@@ -205,7 +233,7 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
       pointLat="lat"
       pointLng="lng"
       pointAltitude={0.01}
-      pointRadius="size"
+      pointRadius={(d: object) => getZoomAdjustedSize((d as GlobePoint).size)}
       pointColor="color"
       pointLabel={(d: any) => {
         const point = d as GlobePoint;
@@ -228,6 +256,7 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
       animateIn={true}
       // Interactivity
       onGlobeClick={handleInteraction}
+      onZoom={handleZoom}
     />
   );
 }
