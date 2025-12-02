@@ -233,6 +233,20 @@ export function createServer(aggregator: DataAggregator) {
     });
   });
 
+  // Serve static frontend files in production (unified deployment)
+  const frontendPath = path.resolve(process.cwd(), '../frontend/dist');
+  if (existsSync(frontendPath)) {
+    logger.info({ path: frontendPath }, '📁 Serving static frontend files');
+    
+    // Serve static assets
+    app.use(express.static(frontendPath));
+    
+    // SPA fallback - serve index.html for all non-API routes
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+  }
+
   return app;
 }
 
