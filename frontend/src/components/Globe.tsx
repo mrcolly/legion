@@ -462,9 +462,10 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
     <>
       <GlobeGL
         ref={globeRef}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        // High-resolution NASA Black Marble texture (8K)
+        globeImageUrl="/textures/earth-night-8k.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        bumpImageUrl="/textures/earth-topology.png"
         // Points configuration
         pointsData={globePoints}
         pointLat="lat"
