@@ -134,22 +134,25 @@
 /* Responsive - Mobile */
 @media (max-width: 480px) {
   .settings-menu {
-    bottom: 16px;
-    left: 16px;
-    /* Ensure it stays above the info panel */
+    /* Move to top-left on mobile, below header */
+    top: 70px;
+    left: 12px;
+    bottom: auto;
     z-index: 1100;
   }
 
   /* Larger touch target on mobile */
   .settings-toggle {
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
   }
 
   .settings-panel {
     min-width: 140px;
-    bottom: 58px;
+    /* Open downward on mobile */
+    bottom: auto;
+    top: 54px;
     padding: 10px;
   }
 
@@ -178,6 +181,7 @@
 /* Landscape mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .settings-menu {
+    top: auto;
     bottom: 12px;
     left: 12px;
   }
@@ -190,6 +194,7 @@
 
   .settings-panel {
     bottom: 50px;
+    top: auto;
   }
 
   .settings-item {
