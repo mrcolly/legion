@@ -12,6 +12,7 @@ const MAX_ALTITUDE = 4.0;
 
 // Auto-rotation pause duration (ms)
 const AUTO_ROTATE_PAUSE_MS = 5000;
+const AUTO_ROTATE_HOVER_PAUSE_MS = 1500; // Shorter delay after hover
 
 interface GlobeProps {
   data: GeoDataPoint[];
@@ -382,7 +383,7 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
               autoRotateTimeoutRef.current = null;
             }
           } else {
-            // Not hovering - schedule resume after delay (same as other interactions)
+            // Not hovering - schedule resume after short delay
             if (autoRotateEnabledRef.current) {
               autoRotateTimeoutRef.current = setTimeout(() => {
                 if (globeRef.current && autoRotateEnabledRef.current) {
@@ -392,7 +393,7 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClic
                     logger.debug('Auto-rotation resumed after hover');
                   }
                 }
-              }, AUTO_ROTATE_PAUSE_MS);
+              }, AUTO_ROTATE_HOVER_PAUSE_MS);
             }
           }
         }
