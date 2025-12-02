@@ -1,9 +1,21 @@
-import { useRef, useEffect, useMemo, useCallback, useState } from 'react';
+import { useRef, useEffect, useMemo, useCallback, useState, memo } from 'react';
 import GlobeGL from 'react-globe.gl';
 import * as THREE from 'three';
 import type { GeoDataPoint, GlobePoint } from '../types/GeoData';
 import { globeLogger as logger } from '../utils/logger';
 import { EventToast } from './EventToast';
+
+// Throttle helper for expensive calculations
+function throttle<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+  let lastCall = 0;
+  return ((...args: unknown[]) => {
+    const now = Date.now();
+    if (now - lastCall >= delay) {
+      lastCall = now;
+      fn(...args);
+    }
+  }) as T;
+}
 
 // Zoom configuration
 const DEFAULT_ALTITUDE = 2.5;
@@ -121,7 +133,11 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
   return scatteredPositions;
 }
 
-export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = false, onPointClick, onPointHover, onEventDismiss, onAutoRotateChange }: GlobeProps) {
+// Reusable THREE.js objects to avoid allocations in animation loop
+const tempVector = new THREE.Vector3();
+const tempCameraDir = new THREE.Vector3();
+
+export const Globe = memo(function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = false, onPointClick, onPointHover, onEventDismiss, onAutoRotateChange }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -130,6 +146,10 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
   const [eventPositions, setEventPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [hoveredGlobePoint, setHoveredGlobePoint] = useState<GlobePoint | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+  
+  // Cache for expensive calculations
+  const lastPositionUpdateRef = useRef<number>(0);
+  const POSITION_UPDATE_INTERVAL = 32; // ~30fps for position updates (vs 60fps)
 
   // Sync autoRotate prop with ref
   useEffect(() => {
@@ -145,15 +165,14 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
   /**
    * Convert lat/lng coordinates to screen position using globe.gl's built-in method
    * Returns null if point is on the back side of the globe (not visible)
+   * Optimized to reuse THREE.js objects to avoid allocations
    */
   const getScreenPosition = useCallback((lat: number, lng: number): { x: number; y: number } | null => {
-    if (!globeRef.current) return null;
-
     const globe = globeRef.current;
+    if (!globe) return null;
     
     // Use globe.gl's built-in screen coordinate conversion
-    const screenCoords = globe.getScreenCoords(lat, lng, 0.01); // altitude matches pointAltitude
-    
+    const screenCoords = globe.getScreenCoords(lat, lng, 0.01);
     if (!screenCoords) return null;
     
     const { x, y } = screenCoords;
@@ -162,23 +181,22 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
     const camera = globe.camera();
     if (!camera) return null;
 
-    // Get the 3D position of the point to check visibility
+    // Get the 3D position of the point to check visibility (reuse tempVector)
     const GLOBE_RADIUS = 100;
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
 
-    const position = new THREE.Vector3(
+    tempVector.set(
       -GLOBE_RADIUS * Math.sin(phi) * Math.cos(theta),
       GLOBE_RADIUS * Math.cos(phi),
       GLOBE_RADIUS * Math.sin(phi) * Math.sin(theta)
-    );
+    ).normalize();
 
-    // Check if point is facing the camera
-    const pointNormal = position.clone().normalize();
-    const cameraDirection = camera.position.clone().normalize();
-    const dot = pointNormal.dot(cameraDirection);
+    // Get camera direction (reuse tempCameraDir)
+    tempCameraDir.copy(camera.position).normalize();
     
-    if (dot < 0.1) {
+    // Check if point is facing the camera
+    if (tempVector.dot(tempCameraDir) < 0.1) {
       return null; // Point is on the back side
     }
 
@@ -195,58 +213,74 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
   }, []);
 
   // Update event positions when pendingEvents change or globe moves
+  // Throttled to reduce CPU usage
   useEffect(() => {
     if (pendingEvents.length === 0) {
       setEventPositions(new Map());
       return;
     }
 
-    const updatePositions = () => {
-      const newPositions = new Map<string, { x: number; y: number }>();
-      for (const event of pendingEvents) {
-        const pos = getScreenPosition(
-          event.location.latitude,
-          event.location.longitude
-        );
-        if (pos) {
-          newPositions.set(event.id, pos);
-        }
-      }
-      setEventPositions(newPositions);
-    };
-
-    // Initial positions
-    updatePositions();
-
-    // Update on animation frame while events are showing
     let animationId: number;
-    const animate = () => {
-      updatePositions();
-      animationId = requestAnimationFrame(animate);
+    let isRunning = true;
+    
+    const updatePositions = () => {
+      if (!isRunning) return;
+      
+      const now = Date.now();
+      // Only update every POSITION_UPDATE_INTERVAL ms
+      if (now - lastPositionUpdateRef.current >= POSITION_UPDATE_INTERVAL) {
+        lastPositionUpdateRef.current = now;
+        
+        const newPositions = new Map<string, { x: number; y: number }>();
+        for (const event of pendingEvents) {
+          const pos = getScreenPosition(
+            event.location.latitude,
+            event.location.longitude
+          );
+          if (pos) {
+            newPositions.set(event.id, pos);
+          }
+        }
+        setEventPositions(newPositions);
+      }
+      
+      animationId = requestAnimationFrame(updatePositions);
     };
-    animationId = requestAnimationFrame(animate);
+    
+    // Initial positions immediately
+    const initialPositions = new Map<string, { x: number; y: number }>();
+    for (const event of pendingEvents) {
+      const pos = getScreenPosition(event.location.latitude, event.location.longitude);
+      if (pos) initialPositions.set(event.id, pos);
+    }
+    setEventPositions(initialPositions);
+    
+    // Start animation loop
+    animationId = requestAnimationFrame(updatePositions);
 
     return () => {
+      isRunning = false;
       cancelAnimationFrame(animationId);
     };
   }, [pendingEvents, getScreenPosition]);
 
   /**
-   * Calculate point size multiplier based on zoom level (altitude)
-   * When zoomed in (low altitude), points should be smaller
-   * When zoomed out (high altitude), points should be larger
+   * Calculate zoom scale factor based on altitude
+   * Memoized to avoid recalculation
    */
-  const getZoomAdjustedSize = useCallback((baseSize: number) => {
-    // Normalize altitude to 0-1 range
+  const zoomScaleFactor = useMemo(() => {
     const normalizedAlt = Math.max(0, Math.min(1, 
       (altitude - MIN_ALTITUDE) / (MAX_ALTITUDE - MIN_ALTITUDE)
     ));
-    
-    // Scale factor: 0.1 when zoomed in, 1.0 when zoomed out
-    const scaleFactor = 0.1 + (normalizedAlt * 0.9);
-    
-    return baseSize * scaleFactor;
+    return 0.1 + (normalizedAlt * 0.9);
   }, [altitude]);
+
+  /**
+   * Point radius callback - memoized to prevent recreation on every render
+   */
+  const pointRadiusCallback = useCallback((d: object) => {
+    return (d as GlobePoint).size * zoomScaleFactor;
+  }, [zoomScaleFactor]);
 
   // Transform data to globe point format with scatter for crowded points
   const globePoints: GlobePoint[] = useMemo(() => {
@@ -404,29 +438,36 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
   );
 
   // Update hover position using the actual globe point coordinates (which may be scattered)
+  // Throttled to reduce CPU usage
   useEffect(() => {
     if (!hoveredGlobePoint) {
       setHoverPosition(null);
       return;
     }
 
-    const updatePosition = () => {
-      // Use the globe point's lat/lng which includes scatter offset
-      const pos = getScreenPosition(hoveredGlobePoint.lat, hoveredGlobePoint.lng);
-      setHoverPosition(pos);
-    };
-
-    updatePosition();
-
-    // Keep updating while hovering (in case globe rotates)
     let animationId: number;
-    const animate = () => {
-      updatePosition();
-      animationId = requestAnimationFrame(animate);
+    let isRunning = true;
+    let lastUpdate = 0;
+    
+    const updatePosition = () => {
+      if (!isRunning) return;
+      
+      const now = Date.now();
+      if (now - lastUpdate >= POSITION_UPDATE_INTERVAL) {
+        lastUpdate = now;
+        const pos = getScreenPosition(hoveredGlobePoint.lat, hoveredGlobePoint.lng);
+        setHoverPosition(pos);
+      }
+      
+      animationId = requestAnimationFrame(updatePosition);
     };
-    animationId = requestAnimationFrame(animate);
+
+    // Initial position immediately
+    setHoverPosition(getScreenPosition(hoveredGlobePoint.lat, hoveredGlobePoint.lng));
+    animationId = requestAnimationFrame(updatePosition);
 
     return () => {
+      isRunning = false;
       cancelAnimationFrame(animationId);
     };
   }, [hoveredGlobePoint, getScreenPosition]);
@@ -471,7 +512,7 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
         pointLat="lat"
         pointLng="lng"
         pointAltitude={0.01}
-        pointRadius={(d: object) => getZoomAdjustedSize((d as GlobePoint).size)}
+        pointRadius={pointRadiusCallback}
         pointColor="color"
         pointLabel={() => ''} // Disable default tooltip, we use EventToast instead
         pointResolution={12}
@@ -509,4 +550,4 @@ export function Globe({ data, pendingEvents = [], autoRotate = true, dayMode = f
       )}
     </>
   );
-}
+});

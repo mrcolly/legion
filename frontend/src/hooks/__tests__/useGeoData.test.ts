@@ -150,7 +150,11 @@ describe('useGeoData Hook', () => {
       updateCallback?.(newEvent);
     });
 
-    expect(result.current.data).toHaveLength(3);
+    // Wait for debounced update (100ms + buffer)
+    await waitFor(() => {
+      expect(result.current.data).toHaveLength(3);
+    }, { timeout: 200 });
+    
     expect(result.current.newDataCount).toBe(1);
   });
 
@@ -228,7 +232,10 @@ describe('useGeoData Hook', () => {
       });
     });
 
-    expect(result.current.newDataCount).toBe(1);
+    // Wait for debounced update
+    await waitFor(() => {
+      expect(result.current.newDataCount).toBe(1);
+    }, { timeout: 200 });
 
     // Call refresh
     await act(async () => {

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { GeoDataPoint } from '../types/GeoData';
 import './InfoPanel.css';
 
@@ -10,7 +11,7 @@ interface InfoPanelProps {
   onClose: () => void;
 }
 
-export function InfoPanel({
+export const InfoPanel = memo(function InfoPanel({
   point,
   totalCount,
   isConnected,
@@ -96,7 +97,7 @@ export function InfoPanel({
       )}
     </div>
   );
-}
+});
 
 function formatTime(date: Date): string {
   const now = new Date();
