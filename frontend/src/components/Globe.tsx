@@ -16,9 +16,11 @@ const AUTO_ROTATE_PAUSE_MS = 5000;
 interface GlobeProps {
   data: GeoDataPoint[];
   pendingEvents?: GeoDataPoint[];
+  autoRotate?: boolean;
   onPointClick?: (point: GeoDataPoint) => void;
   onPointHover?: (point: GeoDataPoint | null) => void;
   onEventDismiss?: (id: string) => void;
+  onAutoRotateChange?: (enabled: boolean) => void;
 }
 
 // Color mapping by source/category
@@ -117,14 +119,26 @@ function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number
   return scatteredPositions;
 }
 
-export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, onEventDismiss }: GlobeProps) {
+export function Globe({ data, pendingEvents = [], autoRotate = true, onPointClick, onPointHover, onEventDismiss, onAutoRotateChange }: GlobeProps) {
   const globeRef = useRef<any>(null);
   const [altitude, setAltitude] = useState(DEFAULT_ALTITUDE);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
+  const autoRotateEnabledRef = useRef(autoRotate); // Track if user has enabled auto-rotate
   const [eventPositions, setEventPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [hoveredGlobePoint, setHoveredGlobePoint] = useState<GlobePoint | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Sync autoRotate prop with ref
+  useEffect(() => {
+    autoRotateEnabledRef.current = autoRotate;
+    if (globeRef.current && isInitializedRef.current) {
+      const controls = globeRef.current.controls();
+      if (controls) {
+        controls.autoRotate = autoRotate;
+      }
+    }
+  }, [autoRotate]);
 
   /**
    * Convert lat/lng coordinates to screen position using globe.gl's built-in method
@@ -285,9 +299,9 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
                   clearTimeout(autoRotateTimeoutRef.current);
                 }
                 
-                // Schedule resume
+                // Schedule resume only if auto-rotate is enabled by user
                 autoRotateTimeoutRef.current = setTimeout(() => {
-                  if (globeRef.current) {
+                  if (globeRef.current && autoRotateEnabledRef.current) {
                     const ctrl = globeRef.current.controls();
                     if (ctrl) {
                       ctrl.autoRotate = true;
@@ -318,9 +332,9 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
           clearTimeout(autoRotateTimeoutRef.current);
         }
         
-        // Resume auto-rotation after delay
+        // Resume auto-rotation after delay only if enabled by user
         autoRotateTimeoutRef.current = setTimeout(() => {
-          if (globeRef.current) {
+          if (globeRef.current && autoRotateEnabledRef.current) {
             const ctrl = globeRef.current.controls();
             if (ctrl) {
               ctrl.autoRotate = true;
@@ -377,8 +391,10 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
               autoRotateTimeoutRef.current = null;
             }
           } else {
-            // Not hovering - resume rotation
-            controls.autoRotate = true;
+            // Not hovering - resume rotation only if enabled by user
+            if (autoRotateEnabledRef.current) {
+              controls.autoRotate = true;
+            }
           }
         }
       }

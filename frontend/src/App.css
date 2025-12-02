@@ -184,12 +184,49 @@
   font-style: normal !important;
   }
 
+/* Globe controls */
+.globe-controls {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  z-index: 1000;
+  display: flex;
+  gap: 10px;
+}
+
+.control-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 10, 20, 0.8);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-button:hover {
+  background: rgba(30, 30, 50, 0.9);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.control-button.active {
+  background: rgba(78, 205, 196, 0.2);
+  border-color: rgba(78, 205, 196, 0.5);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .app-header {
     top: 10px;
     left: 10px;
-}
+  }
 
   .app-title {
     font-size: 22px;
@@ -197,5 +234,16 @@
 
   .title-icon {
     font-size: 26px;
+  }
+
+  .globe-controls {
+    bottom: 20px;
+    left: 20px;
+  }
+
+  .control-button {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
   }
 }

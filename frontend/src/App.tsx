@@ -9,6 +9,7 @@ import './App.css';
 function App() {
   const { data, loading, error, isConnected, lastUpdate, newDataCount, pendingEvents, dismissEvent } = useGeoData();
   const [selectedPoint, setSelectedPoint] = useState<GeoDataPoint | null>(null);
+  const [autoRotate, setAutoRotate] = useState(true);
 
   // Log app initialization
   useEffect(() => {
@@ -67,9 +68,21 @@ function App() {
         <Globe
           data={data}
           pendingEvents={pendingEvents}
+          autoRotate={autoRotate}
           onPointClick={handlePointClick}
           onEventDismiss={dismissEvent}
         />
+      </div>
+
+      {/* Controls */}
+      <div className="globe-controls">
+        <button 
+          className={`control-button ${autoRotate ? 'active' : ''}`}
+          onClick={() => setAutoRotate(!autoRotate)}
+          title={autoRotate ? 'Stop rotation' : 'Start rotation'}
+        >
+          {autoRotate ? '⏸️' : '▶️'}
+        </button>
       </div>
 
       {/* Info panel */}
