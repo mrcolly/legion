@@ -123,7 +123,7 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const [eventPositions, setEventPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
-  const [hoveredPoint, setHoveredPoint] = useState<GeoDataPoint | null>(null);
+  const [hoveredGlobePoint, setHoveredGlobePoint] = useState<GlobePoint | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
 
   /**
@@ -361,24 +361,22 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
   const handlePointHover = useCallback(
     (point: object | null) => {
       const globePoint = point as GlobePoint | null;
-      setHoveredPoint(globePoint?.data || null);
+      setHoveredGlobePoint(globePoint);
       onPointHover?.(globePoint?.data || null);
     },
     [onPointHover]
   );
 
-  // Update hover position
+  // Update hover position using the actual globe point coordinates (which may be scattered)
   useEffect(() => {
-    if (!hoveredPoint) {
+    if (!hoveredGlobePoint) {
       setHoverPosition(null);
       return;
     }
 
     const updatePosition = () => {
-      const pos = getScreenPosition(
-        hoveredPoint.location.latitude,
-        hoveredPoint.location.longitude
-      );
+      // Use the globe point's lat/lng which includes scatter offset
+      const pos = getScreenPosition(hoveredGlobePoint.lat, hoveredGlobePoint.lng);
       setHoverPosition(pos);
     };
 
@@ -395,7 +393,7 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [hoveredPoint, getScreenPosition]);
+  }, [hoveredGlobePoint, getScreenPosition]);
 
   // Handle zoom changes - just track altitude, don't pause rotation
   // (rotation pauses on click/drag via onGlobeClick)
@@ -452,10 +450,10 @@ export function Globe({ data, pendingEvents = [], onPointClick, onPointHover, on
       ))}
 
       {/* Hover toast */}
-      {hoveredPoint && hoverPosition && (
+      {hoveredGlobePoint && hoverPosition && (
         <EventToast
-          key={`hover-${hoveredPoint.id}`}
-          event={hoveredPoint}
+          key={`hover-${hoveredGlobePoint.data.id}`}
+          event={hoveredGlobePoint.data}
           position={hoverPosition}
           isHover={true}
         />
