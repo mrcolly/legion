@@ -1,346 +1,232 @@
-# Legion Backend
+# Legion 🌍
 
-Real-time geolocation data visualization backend - A data-agnostic service for collecting and serving geo-located data from multiple sources.
+Real-time global events visualization on a 3D globe.
 
-## Features
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![globe.gl](https://img.shields.io/badge/globe.gl-3D%20Globe-blue)
 
-- 🌍 **Data Source Agnostic**: Easily add new data sources by implementing a simple interface
-- 📡 **Real-time Updates**: Auto-refresh data at configurable intervals
-- 🔌 **Pluggable Architecture**: Add/remove data sources without changing core code
-- 📊 **RESTful API**: Clean API for accessing geo-located data
-- 🎯 **Geographic Filtering**: Filter data by bounding box
-- 📈 **Statistics**: Monitor data source health and performance
+<p align="center">
+  <img src="https://img.shields.io/badge/Backend-Express.js-green" alt="Backend"/>
+  <img src="https://img.shields.io/badge/Frontend-Vite%20+%20React-purple" alt="Frontend"/>
+  <img src="https://img.shields.io/badge/Data-GDELT%20News-red" alt="Data"/>
+</p>
 
-## Current Data Sources
+## 🎯 Overview
 
-- **Demo Source**: Generates realistic sample news events around major world cities (default for testing)
-- **GDELT Project**: Real-time global news events from the last hour with geolocation (can be enabled)
+Legion is a full-stack application that visualizes real-time global events on an interactive 3D globe. Events from news sources appear as points on the globe, with live updates streamed via Server-Sent Events.
 
-## Architecture
+## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│         DataAggregator                  │
-│  (Manages multiple data sources)        │
-└────────────┬────────────────────────────┘
-             │
-     ┌───────┴────────┬──────────────┐
-     │                │              │
-┌────▼─────┐   ┌─────▼────┐   ┌────▼─────┐
-│  GDELT   │   │ Source 2 │   │ Source 3 │
-│  Source  │   │ (Future) │   │ (Future) │
-└──────────┘   └──────────┘   └──────────┘
+legion/
+├── backend/           # Express.js API server
+│   ├── src/
+│   │   ├── api/       # REST endpoints
+│   │   ├── services/  # Data aggregation
+│   │   ├── sources/   # Data sources (GDELT, Demo)
+│   │   └── utils/     # Hash, logging utilities
+│   ├── Dockerfile
+│   └── package.json
+│
+├── frontend/          # React + Vite SPA
+│   ├── src/
+│   │   ├── components/  # Globe, InfoPanel
+│   │   ├── hooks/       # useGeoData
+│   │   └── services/    # API client
+│   ├── Dockerfile
+│   └── package.json
+│
+├── docs/              # Documentation
+├── docker-compose.yml # Container orchestration
+└── README.md
 ```
 
-## Getting Started
+## 🚀 Quick Start
 
-### Installation
+### Option 1: Docker (Recommended)
 
 ```bash
+# Build and run everything
+docker-compose up --build
+
+# Access:
+# - Frontend: http://localhost:8080
+# - Backend:  http://localhost:3000
+```
+
+### Option 2: Local Development
+
+```bash
+# Terminal 1 - Backend
+cd backend
 npm install
+npm run dev
+
+# Terminal 2 - Frontend
+cd frontend
+npm install
+npm run dev
+
+# Access:
+# - Frontend: http://localhost:5173
+# - Backend:  http://localhost:3000
 ```
 
-### Run Tests
+## ✨ Features
 
-```bash
-npm test              # Run all tests
-npm run test:watch    # Watch mode for development
-npm run test:coverage # Generate coverage report
-```
+### Backend
+- 🔌 **Data-agnostic architecture** - Plugin system for multiple data sources
+- 📰 **GDELT integration** - Real-time news events with geolocation
+- 🔐 **Hash-based deduplication** - No duplicate events
+- 📡 **Server-Sent Events** - Real-time data streaming
+- 📝 **Structured logging** - Pino with JSON output
+- 🧪 **36 unit tests** - Comprehensive test coverage
 
-### Configuration
+### Frontend
+- 🌍 **3D Globe** - Interactive WebGL globe via globe.gl
+- 🌙 **Night view** - Earth with city lights
+- 📍 **Live points** - Color-coded by source
+- 🔄 **Auto-rotation** - Stops on interaction
+- 📊 **Stats panel** - Events count, connection status
+- 📱 **Responsive** - Works on mobile
 
-Create a `.env` file (optional):
+## 🔧 Configuration
 
+### Environment Variables
+
+**Backend** (`backend/.env`):
 ```bash
 PORT=3000
-USE_DEMO=true         # Demo data for testing (enabled by default)
-USE_GDELT=true        # Real news data from GDELT Project (disabled by default)
-LOG_LEVEL=info        # Log level: trace, debug, info, warn, error (default: info)
-NODE_ENV=development  # development (pretty logs) or production (JSON logs)
+USE_DEMO=true       # Enable demo data source
+USE_GDELT=true      # Enable GDELT news source
+LOG_LEVEL=info      # trace, debug, info, warn, error
+NODE_ENV=development
 ```
 
-You can enable multiple sources simultaneously - they'll be aggregated automatically!
-
-**Note on GDELT:** Geo-located news data can be sparse. The system fetches articles about events likely to have specific locations (conflicts, summits, disasters, weather, sports, etc.) and filters for those with valid coordinates. During quiet news periods, GDELT may return few or no geo-located articles. For reliable testing, use the Demo source.
-
-### Running
-
-Development mode with hot reload:
+**Frontend** (`frontend/.env`):
 ```bash
-npm run dev
+VITE_API_URL=http://localhost:3000
 ```
 
-Build and run:
+### Docker Compose
+
 ```bash
-npm run build
-npm start
+# Production mode
+docker-compose up -d
+
+# Development mode (with hot reload)
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
 ```
 
-## API Endpoints
+## 📡 API Endpoints
 
-### GET /health
-Health check endpoint
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/data` | Get all events (`?sort=desc&limit=100`) |
+| GET | `/api/data/bbox` | Filter by bounding box |
+| POST | `/api/data/refresh` | Trigger data refresh |
+| GET | `/api/sources` | Source statistics |
+| GET | `/api/cache/stats` | Cache statistics |
+| GET | `/api/stream` | SSE real-time updates |
 
-**Response:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2023-12-01T12:00:00.000Z"
-}
-```
+## 🎨 Customization
 
-### GET /api/data
-Get all cached data points
+### Globe Appearance
 
-**Query Parameters:**
-- `sort` (optional): Sort order - `desc` (newest first, default) or `asc` (oldest first)
-- `limit` (optional): Limit number of results (e.g., `100`)
+Edit `frontend/src/components/Globe.tsx`:
 
-**Examples:**
-```bash
-# Get all data (newest first by default)
-GET /api/data
+```typescript
+// Change earth texture
+globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
 
-# Get oldest first
-GET /api/data?sort=asc
-
-# Get 100 newest items
-GET /api/data?limit=100
-
-# Get 50 oldest items
-GET /api/data?sort=asc&limit=50
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "count": 150,
-  "total": 150,
-  "lastUpdate": "2023-12-01T12:00:00.000Z",
-  "data": [
-    {
-      "id": "gdelt-...",
-      "hash": "a3f2e9d8...",
-      "timestamp": "2023-12-01T11:59:00.000Z",
-      "location": {
-        "latitude": 40.7128,
-        "longitude": -74.0060
-      },
-      "title": "News Event Title",
-      "description": "Event description",
-      "url": "https://...",
-      "source": "GDELT",
-      "category": "news",
-      "metadata": {}
-    }
-  ]
-}
-```
-
-### POST /api/data/refresh
-Force refresh data from all sources
-
-**Response:**
-```json
-{
-  "success": true,
-  "count": 150,
-  "lastUpdate": "2023-12-01T12:00:00.000Z",
-  "data": [...]
-}
-```
-
-### GET /api/sources
-Get statistics about all data sources
-
-**Response:**
-```json
-{
-  "success": true,
-  "sources": [
-    {
-      "name": "GDELT",
-      "enabled": true,
-      "stats": {
-        "totalFetched": 1500,
-        "lastFetchTime": "2023-12-01T12:00:00.000Z",
-        "errors": 0,
-        "isHealthy": true
-      }
-    }
-  ]
-}
-```
-
-### GET /api/data/bbox
-Filter data by geographic bounding box
-
-**Query Parameters:**
-- `minLat`: Minimum latitude (required)
-- `maxLat`: Maximum latitude (required)
-- `minLon`: Minimum longitude (required)
-- `maxLon`: Maximum longitude (required)
-- `sort` (optional): Sort order - `desc` (newest first, default) or `asc` (oldest first)
-- `limit` (optional): Limit number of results
-
-**Examples:**
-```bash
-# Get all data in bounding box (newest first)
-GET /api/data/bbox?minLat=40&maxLat=41&minLon=-75&maxLon=-73
-
-# Get 50 newest in bounding box
-GET /api/data/bbox?minLat=40&maxLat=41&minLon=-75&maxLon=-73&limit=50
-
-# Get oldest first
-GET /api/data/bbox?minLat=40&maxLat=41&minLon=-75&maxLon=-73&sort=asc
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "count": 25,
-  "data": [...]
-}
-```
-
-### GET /api/cache/stats
-Get cache statistics including deduplication metrics
-
-**Response:**
-```json
-{
-  "success": true,
-  "totalPoints": 250,
-  "uniqueHashes": 250,
-  "sourceCount": 2,
-  "lastUpdate": "2025-12-01T22:15:00.000Z"
-}
-```
-
-### POST /api/cache/clear
-Clear all cached data (debug/testing only)
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Cache cleared successfully"
-}
-```
-
-### GET /api/stream
-Real-time Server-Sent Events (SSE) stream
-
-**Response:** `text/event-stream`
-
-Connect to receive real-time notifications when new data arrives.
-
-**Example:**
-```javascript
-const eventSource = new EventSource('http://localhost:3000/api/stream');
-
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  
-  if (data.type === 'data-updated') {
-    console.log(`${data.newDataCount} new events from ${data.source}`);
-    // Add data.newData to your visualization
-  }
+// Point colors by source
+const SOURCE_COLORS = {
+  GDELT: '#ff6b6b',  // Red
+  Demo: '#4ecdc4',   // Teal
 };
 ```
 
-See [REAL_TIME_STREAMING.md](docs/REAL_TIME_STREAMING.md) for complete documentation.
+### Add New Data Source
 
-## Adding New Data Sources
-
-To add a new data source, create a class that extends `DataSourceService`:
-
+1. Create `backend/src/sources/MySource.ts`:
 ```typescript
-import { DataSourceService } from '../services/DataSourceService';
-import { GeoDataPoint, DataSourceConfig } from '../types/GeoData';
-
-export class MyNewSource extends DataSourceService {
-  constructor(config?: Partial<DataSourceConfig>) {
-    super({
-      name: 'MySource',
-      enabled: true,
-      refreshInterval: 60000,
-      ...config,
-    });
-  }
-
+export class MySource extends DataSourceService {
   async fetchData(): Promise<GeoDataPoint[]> {
-    // Implement your data fetching logic here
-    const data = await fetchFromAPI();
-    
-    // Transform to GeoDataPoint format
-    return data.map(item => ({
-      id: `mysource-${item.id}`,
-      timestamp: new Date(item.date),
-      location: {
-        latitude: item.lat,
-        longitude: item.lon,
-      },
-      title: item.title,
-      description: item.description,
-      url: item.url,
-      source: this.getName(),
-      category: item.category,
-      metadata: item.extra,
-    }));
+    // Your data fetching logic
   }
 }
 ```
 
-Then register it in `src/index.ts`:
-
+2. Register in `backend/src/index.ts`:
 ```typescript
-aggregator.registerSource(new MyNewSource());
+aggregator.registerSource(new MySource());
 ```
 
-### Switching Data Sources
+## 📦 Tech Stack
 
-In `src/index.ts`, you can easily enable/disable sources:
+### Backend
+- **Runtime**: Node.js 20
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Logging**: Pino
+- **Testing**: Vitest
 
-```typescript
-// Use demo data for testing
-aggregator.registerSource(new DemoSource());
+### Frontend
+- **Build**: Vite
+- **Framework**: React 18
+- **3D**: globe.gl / three.js
+- **Language**: TypeScript
 
-// Use GDELT for real news data
-aggregator.registerSource(new GDELTSource());
+### Infrastructure
+- **Container**: Docker
+- **Orchestration**: Docker Compose
+- **Web Server**: Nginx (frontend)
 
-// Use multiple sources simultaneously!
-aggregator.registerSource(new DemoSource());
-aggregator.registerSource(new GDELTSource());
-aggregator.registerSource(new MyCustomSource());
+## 📚 Documentation
+
+- [Backend Architecture](docs/ARCHITECTURE.md)
+- [GDELT Integration](docs/GDELT_GUIDE.md)
+- [Hash Deduplication](docs/HASH_BASED_DEDUPLICATION.md)
+- [Testing Guide](docs/TESTING.md)
+- [Logging Guide](docs/LOGGING.md)
+
+## 🧪 Testing
+
+```bash
+# Backend tests
+cd backend
+npm test                 # Run all tests
+npm run test:watch       # Watch mode
+npm run test:coverage    # Coverage report
+
+# Frontend (TODO)
+cd frontend
+npm test
 ```
 
-## Data Format
+## 🤝 Contributing
 
-All data sources must return data in the `GeoDataPoint` format:
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Commit changes: `git commit -m 'Add my feature'`
+4. Push to branch: `git push origin feature/my-feature`
+5. Open a Pull Request
 
-```typescript
-interface GeoDataPoint {
-  id: string;              // Unique identifier
-  timestamp: Date;         // When the event occurred
-  location: {
-    latitude: number;
-    longitude: number;
-    altitude?: number;
-    accuracy?: number;
-  };
-  title: string;           // Main title/headline
-  description?: string;    // Additional details
-  url?: string;           // Link to original content
-  source: string;          // Data source name
-  category?: string;       // Event category
-  metadata?: any;          // Source-specific data
-}
-```
+## 📄 License
 
-## License
+MIT License - see [LICENSE](LICENSE) for details.
 
-MIT
+---
+
+<p align="center">
+  Made with ❤️ and ☕
+</p>

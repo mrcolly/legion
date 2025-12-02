@@ -1,0 +1,30 @@
+# Development override configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: build  # Use build stage for dev (includes devDependencies)
+    volumes:
+      - ./backend/src:/app/src:ro  # Mount source for hot reload
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    command: ["npx", "tsx", "watch", "src/index.ts"]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: deps  # Use deps stage for dev
+    volumes:
+      - ./frontend/src:/app/src:ro  # Mount source for hot reload
+      - ./frontend/index.html:/app/index.html:ro
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+

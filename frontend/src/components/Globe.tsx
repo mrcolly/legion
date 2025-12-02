@@ -148,4 +148,3 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     />
   );
 }
-

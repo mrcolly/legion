@@ -56,4 +56,3 @@ export interface GlobePoint {
   label: string;
   data: GeoDataPoint;
 }
-

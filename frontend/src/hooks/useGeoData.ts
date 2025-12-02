@@ -122,4 +122,3 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     refresh,
   };
 }
-

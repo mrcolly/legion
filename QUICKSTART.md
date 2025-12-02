@@ -1,159 +1,176 @@
-# Legion Backend - Quick Start Guide
+# Legion Quick Start Guide 🚀
 
-## 🚀 Get Started in 2 Minutes
+Get the Legion project running in under 5 minutes.
 
-### 1. Install Dependencies
+## Option 1: Docker (Recommended) 🐳
+
+The fastest way to run Legion:
 
 ```bash
-npm install
+# Clone and run
+git clone <your-repo>
+cd legion
+
+# Build and start all services
+docker-compose up --build
+
+# Access the app
+open http://localhost:8080
 ```
 
-### 2. Run the Server
+**That's it!** The frontend is at `localhost:8080` and backend at `localhost:3000`.
+
+### Docker Commands
 
 ```bash
+# Start in background
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild after changes
+docker-compose up --build
+```
+
+---
+
+## Option 2: Local Development 💻
+
+### Prerequisites
+
+- Node.js 20+
+- npm 10+
+
+### Step 1: Backend
+
+```bash
+cd backend
+npm install
 npm run dev
 ```
 
-The server starts on `http://localhost:3000` with demo data automatically!
+Backend runs on http://localhost:3000
 
-**Optional:** Enable debug logging:
-```bash
-LOG_LEVEL=debug npm run dev
-```
-
-### 3. Test the API
-
-#### Get all geo-located data points (newest first):
-```bash
-curl http://localhost:3000/api/data | jq '.'
-```
-
-#### Get 100 newest data points:
-```bash
-curl "http://localhost:3000/api/data?limit=100" | jq '.'
-```
-
-#### Get oldest data first:
-```bash
-curl "http://localhost:3000/api/data?sort=asc" | jq '.'
-```
-
-#### Check data source health:
-```bash
-curl http://localhost:3000/api/sources | jq '.'
-```
-
-#### Filter by geographic area (Europe & North America, 50 newest):
-```bash
-curl "http://localhost:3000/api/data/bbox?minLat=40&maxLat=50&minLon=-80&maxLon=10&limit=50" | jq '.'
-```
-
-#### Refresh data from sources:
-```bash
-curl -X POST http://localhost:3000/api/data/refresh | jq '.'
-```
-
-#### Get cache statistics:
-```bash
-curl http://localhost:3000/api/cache/stats | jq '.'
-```
-
-## 📊 Example Response
-
-```json
-{
-  "success": true,
-  "count": 10,
-  "lastUpdate": "2025-12-01T22:15:19.177Z",
-  "data": [
-    {
-      "id": "demo-1764627319177-0",
-      "timestamp": "2025-12-01T21:36:53.133Z",
-      "location": {
-        "latitude": 40.7128,
-        "longitude": -74.0060
-      },
-      "title": "Economic Report in New York",
-      "description": "Live updates from New York, USA",
-      "url": "https://example.com/news/1764627319177-0",
-      "source": "Demo",
-      "category": "news",
-      "metadata": {
-        "city": "New York",
-        "country": "USA",
-        "eventType": "Economic Report"
-      }
-    }
-  ]
-}
-```
-
-## 🔧 Switching to Real GDELT News Data
-
-### Enable GDELT (Recommended for Production)
-
-Create a `.env` file:
+### Step 2: Frontend
 
 ```bash
-# Enable GDELT for real news events
-USE_GDELT=true
-
-# Optional: Keep demo data for testing
-USE_DEMO=false
+# New terminal
+cd frontend
+npm install
+npm run dev
 ```
 
-Or use both sources simultaneously:
+Frontend runs on http://localhost:5173
+
+### Step 3: Open Browser
+
+Navigate to http://localhost:5173 to see the globe!
+
+---
+
+## Configuration
+
+### Enable GDELT News Data
+
+Edit `backend/.env`:
 
 ```bash
 USE_DEMO=true
-USE_GDELT=true
+USE_GDELT=true   # Enable real news data
 ```
 
-The system will aggregate data from all enabled sources!
+Or with Docker:
 
-### About GDELT Data
+```bash
+docker-compose up -d
+docker-compose exec backend sh -c "export USE_GDELT=true"
+```
 
-**Note:** GDELT geo-located data can be sparse. Not all news articles have precise coordinates. The system:
-- Fetches articles about topics likely to have locations (conflicts, summits, disasters, etc.)
-- Filters for articles with valid latitude/longitude
-- May return 0 results during quiet news periods
-- Automatically retries every 2 minutes
+---
 
-**Tip:** For reliable testing, use the Demo source. For production visualization, enable GDELT.
+## Quick Tests
 
-### Creating Your Own Source
+### Backend Health
 
-See `src/sources/DemoSource.ts` or `src/sources/GDELTSource.ts` as examples.
+```bash
+curl http://localhost:3000/health
+# {"status":"ok","timestamp":"..."}
+```
 
-All you need:
-1. Extend `DataSourceService`
-2. Implement `fetchData()` method
-3. Return array of `GeoDataPoint` objects
-4. Register it in `src/index.ts`
+### Get Events
 
-## 🌍 Building Your 3D Visualization
+```bash
+curl http://localhost:3000/api/data?limit=5
+```
 
-Your frontend can:
-- Poll `GET /api/data` every few seconds
-- Use WebSocket (future enhancement) for real-time updates
-- Filter by bounding box as users pan/zoom the 3D world
-- Display data points at their latitude/longitude coordinates
+### Real-time Stream
 
-## 📈 Next Steps
+```bash
+curl http://localhost:3000/api/stream
+# SSE events will appear here
+```
 
-1. **Frontend**: Build a 3D globe visualization (Three.js, Cesium, deck.gl)
-2. **Real Data**: Enable GDELT or add other sources (Reddit, Mastodon, etc.)
-3. **WebSocket**: Add real-time push updates
-4. **Database**: Store historical data for playback/analysis
-5. **Filters**: Add time range, category, keyword filters
+---
 
-## 🎯 Architecture Benefits
+## Project Structure
 
-- ✅ **Source-Agnostic**: Easy to add/swap data sources
-- ✅ **Parallel Fetching**: Multiple sources don't block each other
-- ✅ **Health Monitoring**: Track each source's status
-- ✅ **Graceful Degradation**: One failing source doesn't break the system
-- ✅ **Deduplication**: Automatic handling of duplicate data points
-- ✅ **Geographic Filtering**: Built-in bounding box queries
+```
+legion/
+├── backend/          # Express.js API
+│   ├── src/
+│   ├── Dockerfile
+│   └── package.json
+├── frontend/         # React + globe.gl
+│   ├── src/
+│   ├── Dockerfile
+│   └── package.json
+├── docs/             # Documentation
+├── docker-compose.yml
+└── README.md
+```
 
-Happy coding! 🚀
+---
+
+## Common Issues
+
+### Port Already in Use
+
+```bash
+# Kill process on port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Kill process on port 5173
+lsof -ti:5173 | xargs kill -9
+```
+
+### Docker Build Fails
+
+```bash
+# Clean rebuild
+docker-compose down
+docker system prune -f
+docker-compose up --build
+```
+
+### Frontend Can't Connect to Backend
+
+1. Make sure backend is running first
+2. Check CORS is enabled (it is by default)
+3. Verify `VITE_API_URL` in `frontend/.env`
+
+---
+
+## Next Steps
+
+1. 📖 Read the [full README](README.md)
+2. 🔧 Check [backend docs](docs/ARCHITECTURE.md)
+3. 🌍 Try adding a [new data source](docs/ARCHITECTURE.md#adding-data-sources)
+4. 🎨 Customize [globe appearance](frontend/README.md#customization)
+
+---
+
+**Happy coding! 🎉**
