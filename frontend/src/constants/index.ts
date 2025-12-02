@@ -110,9 +110,13 @@ export const PERFORMANCE = {
 export const COLORS = {
   /** Colors by data source */
   SOURCE: {
-    GDELT: '#ff6b6b',
-    Demo: '#4ecdc4',
-    default: '#ffe66d',
+    GDELT: '#ff6b6b',      // Red - news
+    RSS: '#f39c12',        // Orange - RSS feeds
+    Demo: '#4ecdc4',       // Teal - demo
+    USGS: '#e74c3c',       // Dark red - earthquakes
+    EONET: '#ff9500',      // Amber - natural disasters
+    Mastodon: '#6364ff',   // Purple - social
+    default: '#ffe66d',    // Yellow
   } as Record<string, string>,
   
   /** Colors by category */
@@ -120,6 +124,12 @@ export const COLORS = {
     news: '#ff6b6b',
     event: '#4ecdc4',
     demo: '#ffe66d',
+    earthquake: '#e74c3c',
+    wildfires: '#ff9500',
+    severeStorms: '#9b59b6',
+    volcanoes: '#c0392b',
+    floods: '#3498db',
+    social: '#6364ff',
     default: '#95e1d3',
   } as Record<string, string>,
   

@@ -3,6 +3,9 @@ import { DataAggregator } from './services/DataAggregator';
 import { GDELTSource } from './sources/GDELTSource';
 import { DemoSource } from './sources/DemoSource';
 import { RSSSource } from './sources/RSSSource';
+import { USGSSource } from './sources/USGSSource';
+import { EONETSource } from './sources/EONETSource';
+import { MastodonSource } from './sources/MastodonSource';
 import { createServer } from './api/server';
 import { logger } from './utils/logger';
 
@@ -15,6 +18,9 @@ const PORT = process.env.PORT || 3000;
 const ENABLE_DEMO = process.env.USE_DEMO !== 'false'; // Default: enabled
 const ENABLE_GDELT = process.env.USE_GDELT === 'true'; // Default: disabled
 const ENABLE_RSS = process.env.USE_RSS === 'true'; // Default: disabled
+const ENABLE_USGS = process.env.USE_USGS === 'true'; // Default: disabled (earthquakes)
+const ENABLE_EONET = process.env.USE_EONET === 'true'; // Default: disabled (natural disasters)
+const ENABLE_MASTODON = process.env.USE_MASTODON === 'true'; // Default: disabled (social)
 
 // Top-level code execution
 logger.info('🚀 Starting Legion Backend...');
@@ -40,8 +46,24 @@ if (ENABLE_RSS) {
   aggregator.registerSource(new RSSSource({ enableGeoparsing: true }));
 }
 
-if (!ENABLE_DEMO && !ENABLE_GDELT && !ENABLE_RSS) {
-  logger.warn('⚠️  No data sources enabled! Set USE_DEMO=true, USE_GDELT=true, or USE_RSS=true');
+if (ENABLE_USGS) {
+  logger.info('🌋 Enabling USGS earthquake data source');
+  aggregator.registerSource(new USGSSource());
+}
+
+if (ENABLE_EONET) {
+  logger.info('🔥 Enabling EONET natural disasters data source');
+  aggregator.registerSource(new EONETSource());
+}
+
+if (ENABLE_MASTODON) {
+  logger.info('🦣 Enabling Mastodon social data source (with geoparsing)');
+  aggregator.registerSource(new MastodonSource());
+}
+
+if (!ENABLE_DEMO && !ENABLE_GDELT && !ENABLE_RSS && !ENABLE_USGS && !ENABLE_EONET && !ENABLE_MASTODON) {
+  logger.warn('⚠️  No data sources enabled!');
+  logger.warn('⚠️  Set USE_DEMO, USE_GDELT, USE_RSS, USE_USGS, USE_EONET, or USE_MASTODON=true');
   logger.warn('⚠️  Defaulting to Demo source...');
   aggregator.registerSource(new DemoSource());
 }
