@@ -8,6 +8,12 @@ const logger = createLogger({ hook: 'useGeoData' });
 // Maximum number of points to keep on the map
 const MAX_POINTS = 1000;
 
+// Delay between showing each new event toast (ms)
+const EVENT_DISPLAY_DELAY = 500;
+
+// Maximum number of visible toasts at once
+const MAX_VISIBLE_TOASTS = 5;
+
 // Debounce helper for batch updates
 function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -49,10 +55,54 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
   const [pendingEvents, setPendingEvents] = useState<GeoDataPoint[]>([]);
   
   const dataMapRef = useRef<Map<string, GeoDataPoint>>(new Map());
+  
+  // Queue for staggered event display
+  const eventQueueRef = useRef<GeoDataPoint[]>([]);
+  const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProcessingQueueRef = useRef(false);
 
   const dismissEvent = useCallback((id: string) => {
     setPendingEvents(prev => prev.filter(e => e.id !== id));
   }, []);
+
+  // Process event queue - shows one event at a time with delay
+  const processEventQueue = useCallback(() => {
+    if (eventQueueRef.current.length === 0) {
+      isProcessingQueueRef.current = false;
+      return;
+    }
+    
+    isProcessingQueueRef.current = true;
+    
+    // Take the next event from the queue
+    const nextEvent = eventQueueRef.current.shift();
+    if (nextEvent) {
+      setPendingEvents(prev => {
+        // Add to visible events, keep max limit
+        const updated = [nextEvent, ...prev].slice(0, MAX_VISIBLE_TOASTS);
+        return updated;
+      });
+    }
+    
+    // Schedule next event if queue has more
+    if (eventQueueRef.current.length > 0) {
+      queueTimerRef.current = setTimeout(processEventQueue, EVENT_DISPLAY_DELAY);
+    } else {
+      isProcessingQueueRef.current = false;
+    }
+  }, []);
+
+  // Add events to the queue for staggered display
+  const queueEvents = useCallback((events: GeoDataPoint[]) => {
+    // Add events to queue (limit queue size to prevent memory issues)
+    const maxQueueSize = 50;
+    eventQueueRef.current = [...eventQueueRef.current, ...events].slice(0, maxQueueSize);
+    
+    // Start processing if not already running
+    if (!isProcessingQueueRef.current) {
+      processEventQueue();
+    }
+  }, [processEventQueue]);
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
@@ -121,15 +171,9 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     // Batch state updates - React 18 will automatically batch these
     setNewDataCount(prev => prev + addedCount);
     
-    // Add new events to pending (for toast notifications)
+    // Queue new events for staggered toast notifications
     if (newlyAdded.length > 0) {
-      setPendingEvents(prev => {
-        // Avoid creating new array if at limit and no room
-        if (prev.length >= 20) {
-          return [...newlyAdded.slice(0, 20 - prev.length), ...prev].slice(0, 20);
-        }
-        return [...newlyAdded, ...prev].slice(0, 20);
-      });
+      queueEvents(newlyAdded);
     }
     
     // Prepare sorted data - only sort if we have new data
@@ -188,6 +232,15 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       unsubscribe();
     };
   }, [autoRefresh, handleUpdate]);
+
+  // Cleanup event queue timer on unmount
+  useEffect(() => {
+    return () => {
+      if (queueTimerRef.current) {
+        clearTimeout(queueTimerRef.current);
+      }
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     setNewDataCount(0);
