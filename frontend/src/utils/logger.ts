@@ -48,4 +48,3 @@ export function createLogger(context: Record<string, unknown>) {
 export const apiLogger = createLogger({ component: 'api' });
 export const globeLogger = createLogger({ component: 'globe' });
 export const sseLogger = createLogger({ component: 'sse' });
-
