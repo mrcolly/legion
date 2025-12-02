@@ -2,10 +2,12 @@ import Parser from 'rss-parser';
 import { DataSourceService } from '../services/DataSourceService';
 import { GeoDataPoint, DataSourceConfig } from '../types/GeoData';
 import { createGeoDataPoint } from '../utils/hashUtils';
+import { GeoParser, getGeoParser, ParsedLocation } from '../services/GeoParser';
 
 /**
  * RSS Feed data source
  * Fetches news from popular RSS feeds around the world
+ * Supports optional geoparsing for precise locations from article content
  */
 
 // =============================================================================
@@ -35,6 +37,13 @@ interface FeedItem {
   creator?: string;
   categories?: string[];
   guid?: string;
+}
+
+interface RSSSourceConfig extends Partial<DataSourceConfig> {
+  feeds?: FeedConfig[];
+  itemsPerFeed?: number;
+  /** Enable geoparsing to extract precise locations from text */
+  enableGeoparsing?: boolean;
 }
 
 // =============================================================================
@@ -198,11 +207,10 @@ export class RSSSource extends DataSourceService {
   private parser: Parser;
   private feeds: FeedConfig[];
   private itemsPerFeed: number;
+  private enableGeoparsing: boolean;
+  private geoParser: GeoParser | null = null;
 
-  constructor(config?: Partial<DataSourceConfig> & { 
-    feeds?: FeedConfig[];
-    itemsPerFeed?: number;
-  }) {
+  constructor(config?: RSSSourceConfig) {
     super({
       name: 'RSS',
       enabled: true,
@@ -220,6 +228,12 @@ export class RSSSource extends DataSourceService {
 
     this.feeds = config?.feeds ?? POPULAR_FEEDS;
     this.itemsPerFeed = config?.itemsPerFeed ?? 5;
+    this.enableGeoparsing = config?.enableGeoparsing ?? true; // Enabled by default
+
+    if (this.enableGeoparsing) {
+      this.geoParser = getGeoParser();
+      this.logger.debug('Geoparsing enabled');
+    }
   }
 
   async fetchData(): Promise<GeoDataPoint[]> {
@@ -261,49 +275,107 @@ export class RSSSource extends DataSourceService {
       const parsed = await this.parser.parseURL(feed.url);
       const items = parsed.items.slice(0, this.itemsPerFeed);
 
-      return items
-        .filter((item): item is FeedItem & { title: string } => !!item.title)
-        .map((item, index) => this.transformItem(item, feed, index));
+      const points: GeoDataPoint[] = [];
+
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (!item.title) continue;
+
+        const point = await this.transformItem(
+          item as FeedItem & { title: string },
+          feed,
+          index
+        );
+        points.push(point);
+      }
+
+      return points;
     } catch (error) {
       this.logger.warn({ feed: feed.name, error }, 'Failed to fetch feed');
       return [];
     }
   }
 
-  private transformItem(item: FeedItem & { title: string }, feed: FeedConfig, index: number): GeoDataPoint {
-    // Add small random offset to spread points from same feed
-    const offset = this.getLocationOffset(index);
-    
+  private async transformItem(
+    item: FeedItem & { title: string },
+    feed: FeedConfig,
+    index: number
+  ): Promise<GeoDataPoint> {
+    // Try to extract precise location from text if geoparsing is enabled
+    let location = {
+      latitude: feed.location.latitude,
+      longitude: feed.location.longitude,
+      accuracy: 10000, // ~10km radius for city-level (fallback)
+    };
+    let geoType = 'feed-default';
+    let parsedLocation: ParsedLocation | null = null;
+
+    if (this.geoParser) {
+      // Combine title and content for better location extraction
+      const textToAnalyze = [item.title, item.contentSnippet].filter(Boolean).join(' ');
+      parsedLocation = await this.geoParser.parseBestLocation(textToAnalyze);
+
+      if (parsedLocation && parsedLocation.confidence >= 0.5) {
+        location = {
+          latitude: parsedLocation.latitude,
+          longitude: parsedLocation.longitude,
+          accuracy: parsedLocation.confidence >= 0.8 ? 1000 : 5000, // Better confidence = better accuracy
+        };
+        geoType = 'geoparsed';
+        this.logger.debug(
+          { title: item.title, location: parsedLocation.text },
+          'Extracted location from text'
+        );
+      }
+    }
+
+    // Add small offset if using feed default location (to spread points)
+    if (geoType === 'feed-default') {
+      const offset = this.getLocationOffset(index);
+      location.latitude += offset.lat;
+      location.longitude += offset.lng;
+    }
+
     return createGeoDataPoint({
       id: `rss-${feed.name}-${item.guid || item.link || item.title}`,
       timestamp: item.isoDate ? new Date(item.isoDate) : new Date(),
-      location: {
-        latitude: feed.location.latitude + offset.lat,
-        longitude: feed.location.longitude + offset.lng,
-        accuracy: 10000, // ~10km radius for city-level
-      },
+      location,
       title: item.title,
-      description: this.createDescription(item, feed),
+      description: this.createDescription(item, feed, parsedLocation),
       url: item.link,
       source: this.getName(),
       category: feed.category || 'news',
       metadata: {
         feedName: feed.name,
         feedUrl: feed.url,
-        city: feed.location.city,
-        country: feed.location.country,
+        city: parsedLocation?.city || feed.location.city,
+        country: parsedLocation?.country || feed.location.country,
         language: feed.language,
         author: item.creator,
         categories: item.categories,
+        geoType,
+        ...(parsedLocation && {
+          parsedLocation: parsedLocation.text,
+          geoConfidence: parsedLocation.confidence,
+        }),
       },
     });
   }
 
-  private createDescription(item: FeedItem, feed: FeedConfig): string {
+  private createDescription(
+    item: FeedItem,
+    feed: FeedConfig,
+    parsedLocation: ParsedLocation | null
+  ): string {
     const parts: string[] = [];
     
     parts.push(`📰 ${feed.name}`);
-    parts.push(`📍 ${feed.location.city}, ${feed.location.country}`);
+    
+    if (parsedLocation) {
+      parts.push(`📍 ${parsedLocation.formattedAddress || parsedLocation.text}`);
+    } else {
+      parts.push(`📍 ${feed.location.city}, ${feed.location.country}`);
+    }
     
     if (item.contentSnippet) {
       const snippet = item.contentSnippet.substring(0, 150);
@@ -341,8 +413,14 @@ export class RSSSource extends DataSourceService {
     this.feeds.push(feed);
     this.logger.info({ feed: feed.name }, 'Added custom feed');
   }
+
+  /**
+   * Check if geoparsing is enabled
+   */
+  isGeoparsingEnabled(): boolean {
+    return this.enableGeoparsing;
+  }
 }
 
 // Export feed config type for external use
 export type { FeedConfig };
-

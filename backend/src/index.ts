@@ -31,13 +31,13 @@ if (ENABLE_DEMO) {
 }
 
 if (ENABLE_GDELT) {
-  logger.info('📰 Enabling GDELT news data source');
-  aggregator.registerSource(new GDELTSource());
+  logger.info('📰 Enabling GDELT news data source (with geoparsing)');
+  aggregator.registerSource(new GDELTSource({ enableGeoparsing: true }));
 }
 
 if (ENABLE_RSS) {
-  logger.info('📡 Enabling RSS feeds data source (19 global news feeds)');
-  aggregator.registerSource(new RSSSource());
+  logger.info('📡 Enabling RSS feeds data source (with geoparsing)');
+  aggregator.registerSource(new RSSSource({ enableGeoparsing: true }));
 }
 
 if (!ENABLE_DEMO && !ENABLE_GDELT && !ENABLE_RSS) {

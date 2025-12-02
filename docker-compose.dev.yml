@@ -25,6 +25,7 @@ services:
       - ./frontend/src:/app/src:ro  # Mount source for hot reload
       - ./frontend/index.html:/app/index.html:ro
       - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./frontend/public:/app/public:ro  # Mount public assets (textures)
     ports:
       - "5173:5173"
     environment:
