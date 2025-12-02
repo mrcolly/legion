@@ -168,19 +168,20 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
       // Set initial point of view
       globeRef.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 1000);
       
-      // Enable auto-rotation
-      const controls = globeRef.current.controls();
-      if (controls) {
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.3;
-        logger.debug('Auto-rotation enabled');
-      }
-      
-      // Mark as initialized after initial animation completes
-      setTimeout(() => {
-        isInitializedRef.current = true;
-        logger.debug('Globe ready for user interaction');
+      // Enable auto-rotation after initial animation completes
+      const initTimeout = setTimeout(() => {
+        if (globeRef.current) {
+          const controls = globeRef.current.controls();
+          if (controls) {
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.3;
+            isInitializedRef.current = true;
+            logger.info('Auto-rotation enabled');
+          }
+        }
       }, 1500);
+      
+      return () => clearTimeout(initTimeout);
     }
   }, []);
 
@@ -245,14 +246,11 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     [onPointHover]
   );
 
-  // Handle zoom changes - pause rotation only after initialization
+  // Handle zoom changes - just track altitude, don't pause rotation
+  // (rotation pauses on click/drag via onGlobeClick)
   const handleZoom = useCallback((pov: { lat: number; lng: number; altitude: number }) => {
     setAltitude(pov.altitude);
-    // Only pause rotation on user-initiated zoom (after initial animation)
-    if (isInitializedRef.current) {
-      handleInteraction();
-    }
-  }, [handleInteraction]);
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
