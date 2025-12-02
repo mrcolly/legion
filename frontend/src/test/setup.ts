@@ -12,16 +12,22 @@ Object.defineProperty(import.meta, 'env', {
 });
 
 // Mock fetch globally
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 // Mock EventSource for SSE tests
 class MockEventSource {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
+  url: string;
   
-  constructor(public url: string) {}
+  constructor(url: string) {
+    this.url = url;
+  }
   
-  close() {}
+  close(): void {
+    // Cleanup mock - intentionally empty for testing
+  }
 }
 
-global.EventSource = MockEventSource as unknown as typeof EventSource;
+// @ts-expect-error - MockEventSource is a simplified mock for testing
+globalThis.EventSource = MockEventSource;
