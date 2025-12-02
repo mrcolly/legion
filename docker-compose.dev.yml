@@ -5,7 +5,7 @@ services:
   backend:
     build:
       context: ./backend
-      target: build  # Use build stage for dev (includes devDependencies)
+      target: deps  # Use deps stage for dev (skips tests for fast iteration)
     volumes:
       - ./backend/src:/app/src:ro  # Mount source for hot reload
     environment:
