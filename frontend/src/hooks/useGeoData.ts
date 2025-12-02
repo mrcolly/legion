@@ -196,6 +196,15 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     };
   }, [autoRefresh, handleUpdate]);
 
+  // Reset new data count every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNewDataCount(0);
+    }, 60000); // 1 minute
+
+    return () => clearInterval(interval);
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
