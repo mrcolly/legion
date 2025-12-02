@@ -8,11 +8,18 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Build stage
-FROM base AS build
-COPY package.json package-lock.json ./
-RUN npm ci
+# Test stage - must pass before build
+FROM deps AS test
 COPY . .
+RUN npm test
+# Create marker file to prove tests passed
+RUN echo "tests passed" > /app/.tests-passed
+
+# Build stage - depends on test stage passing
+FROM deps AS build
+COPY . .
+# Copy marker from test stage - this forces test stage to complete successfully
+COPY --from=test /app/.tests-passed /app/.tests-passed
 
 # Build with production API URL
 ARG VITE_API_URL=http://localhost:3000
