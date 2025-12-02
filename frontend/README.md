@@ -1,134 +1,81 @@
-# Legion Frontend
+# Frontend
 
-Real-time global events visualization on a 3D globe.
+3D globe visualization built with React and globe.gl.
 
-Built with:
-- ⚡ **Vite** - Fast development and build
-- ⚛️ **React 18** - UI framework
-- 🌍 **globe.gl / react-globe.gl** - 3D globe visualization
-- 📡 **Server-Sent Events** - Real-time data updates
-- 🎨 **Custom CSS** - Modern dark theme
-
-## Quick Start
-
-### Prerequisites
-
-Make sure the backend is running:
+## Commands
 
 ```bash
-cd ../  # Go to root
-npm run dev  # Starts on http://localhost:3000
+yarn dev          # Development server
+yarn build        # Production build
+yarn preview      # Preview production build
+yarn test         # Run tests
+yarn test:watch   # Watch mode
 ```
 
-### Run Frontend
+## Environment Variables
 
 ```bash
-npm install
-npm run dev  # Starts on http://localhost:5173
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-## Features
-
-- 🌐 **3D Globe Visualization** - Interactive WebGL globe with ThreeJS
-- 📍 **Real-time Points** - Events appear as colored points on the globe
-- 📡 **Live Updates** - SSE connection for instant data streaming
-- 🔍 **Point Details** - Click on points to see event information
-- 🎨 **Color-coded Sources** - GDELT (red), Demo (teal)
-- 🌙 **Night Mode** - Beautiful dark earth texture with city lights
-- 🔄 **Auto-rotation** - Globe rotates until user interaction
-
-## Configuration
-
-Create a `.env` file:
-
-```bash
-# Backend API URL
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3000  # Backend URL (empty for production)
+VITE_LOG_LEVEL=info                 # Logging level
 ```
 
 ## Project Structure
 
 ```
-frontend/
-├── src/
-│   ├── components/
-│   │   ├── Globe.tsx       # 3D globe component
-│   │   ├── InfoPanel.tsx   # Stats and details panel
-│   │   └── InfoPanel.css   # Panel styling
-│   ├── hooks/
-│   │   └── useGeoData.ts   # Data fetching hook with SSE
-│   ├── services/
-│   │   └── api.ts          # Backend API client
-│   ├── types/
-│   │   └── GeoData.ts      # TypeScript interfaces
-│   ├── App.tsx             # Main app component
-│   ├── App.css             # App styling
-│   └── main.tsx            # Entry point
-├── .env                    # Environment config
-└── package.json
+src/
+├── components/
+│   ├── Globe.tsx         # 3D globe with points
+│   ├── InfoPanel.tsx     # Stats and event details
+│   ├── EventToast.tsx    # Event notifications
+│   └── SettingsMenu.tsx  # Settings panel
+├── hooks/
+│   ├── useGeoData.ts     # Data fetching + SSE
+│   └── useEventQueue.ts  # Toast queue management
+├── services/
+│   └── api.ts            # Backend API client
+├── types/
+│   └── GeoData.ts        # TypeScript interfaces
+└── constants/
+    └── index.ts          # App configuration
 ```
 
 ## Globe Controls
 
-- **Scroll** - Zoom in/out
-- **Drag** - Rotate the globe
-- **Click point** - View event details & fly to location
-- **Click anywhere** - Stops auto-rotation
+| Action | Effect |
+|--------|--------|
+| Drag | Rotate globe |
+| Scroll | Zoom in/out |
+| Click point | View event details |
+| Hover point | Show tooltip |
 
-## API Integration
+## Features
 
-The frontend connects to the Legion Backend:
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/data` | Fetch all events |
-| `GET /api/stream` | SSE real-time updates |
-| `GET /health` | Health check |
+- 🌍 Interactive 3D globe (WebGL)
+- 📍 Real-time event points with colors by source
+- 🌓 Day/night Earth textures
+- 🔄 Auto-rotation (pauses on interaction)
+- 📱 Responsive design (mobile support)
+- 📡 SSE for live updates
 
 ## Customization
 
 ### Point Colors
 
-Edit `src/components/Globe.tsx`:
+Edit `src/constants/index.ts`:
 
 ```typescript
-const SOURCE_COLORS: Record<string, string> = {
-  GDELT: '#ff6b6b',   // Red for news
-  Demo: '#4ecdc4',    // Teal for demo
-  default: '#ffe66d', // Yellow fallback
+export const SOURCE_COLORS: Record<string, string> = {
+  GDELT: '#ff6b6b',   // Red
+  USGS: '#ffd93d',    // Yellow
+  EONET: '#6bcb77',   // Green
+  RSS: '#4d96ff',     // Blue
+  Demo: '#c9b1ff',    // Purple
 };
 ```
 
-### Globe Textures
-
-Change the earth texture in `Globe.tsx`:
-
-```typescript
-globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-// Or try:
-// earth-day.jpg
-// earth-blue-marble.jpg
-// earth-water.png
-```
-
-## Building for Production
+## Docker
 
 ```bash
-npm run build
+docker build -t legion-frontend .
+docker run -p 80:80 legion-frontend
 ```
-
-Output is in `dist/` folder, ready to deploy to any static host.
-
-## Tech Stack
-
-- **react-globe.gl** - React wrapper for globe.gl
-- **three.js** - 3D rendering (via globe.gl)
-- **WebGL** - Hardware-accelerated graphics
-- **EventSource API** - Server-Sent Events for live data
-
-## Related
-
-- [globe.gl](https://github.com/vasturiano/globe.gl) - 3D globe library
-- [Legion Backend](../) - Data source and API
