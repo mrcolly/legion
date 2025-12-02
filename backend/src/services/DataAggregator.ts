@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
-import { DataSourceService } from './DataSourceService.js';
-import { GeoDataPoint } from '../types/GeoData.js';
-import { createLogger } from '../utils/logger.js';
+import { DataSourceService } from './DataSourceService';
+import { GeoDataPoint } from '../types/GeoData';
+import { createLogger } from '../utils/logger';
 
 /**
  * Aggregates data from multiple sources

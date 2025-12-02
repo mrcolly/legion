@@ -1,13 +1,13 @@
 import dotenv from 'dotenv';
-import { DataAggregator } from './services/DataAggregator.js';
-import { GDELTSource } from './sources/GDELTSource.js';
-import { DemoSource } from './sources/DemoSource.js';
-import { RSSSource } from './sources/RSSSource.js';
-import { USGSSource } from './sources/USGSSource.js';
-import { EONETSource } from './sources/EONETSource.js';
-import { MastodonSource } from './sources/MastodonSource.js';
-import { createServer } from './api/server.js';
-import { logger } from './utils/logger.js';
+import { DataAggregator } from './services/DataAggregator';
+import { GDELTSource } from './sources/GDELTSource';
+import { DemoSource } from './sources/DemoSource';
+import { RSSSource } from './sources/RSSSource';
+import { USGSSource } from './sources/USGSSource';
+import { EONETSource } from './sources/EONETSource';
+import { MastodonSource } from './sources/MastodonSource';
+import { createServer } from './api/server';
+import { logger } from './utils/logger';
 
 // Load environment variables
 dotenv.config();

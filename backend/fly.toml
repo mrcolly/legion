@@ -1,0 +1,36 @@
+# Fly.io configuration for Legion Backend
+# Deploy with: fly launch --config fly.toml
+
+app = "legion-backend"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  USE_DEMO = "true"
+  USE_GDELT = "true"
+  USE_RSS = "true"
+  USE_USGS = "true"
+  USE_EONET = "true"
+  LOG_LEVEL = "info"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false  # Keep running for SSE
+  auto_start_machines = true
+  min_machines_running = 1    # Always have 1 machine for real-time
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
+

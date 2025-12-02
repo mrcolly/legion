@@ -1,5 +1,5 @@
-import { GeoDataPoint, DataSourceConfig, DataSourceStats } from '../types/GeoData.js';
-import { createLogger } from '../utils/logger.js';
+import { GeoDataPoint, DataSourceConfig, DataSourceStats } from '../types/GeoData';
+import { createLogger } from '../utils/logger';
 
 /**
  * Callback function when data source has new data (batch)
