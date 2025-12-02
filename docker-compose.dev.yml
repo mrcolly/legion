@@ -5,7 +5,9 @@ services:
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
       target: deps  # Use deps stage for dev (skips tests for fast iteration)
+    image: legion-backend:dev  # Use different image tag for dev
     volumes:
       - ./backend/src:/app/src:ro  # Mount source for hot reload
     environment:
@@ -16,10 +18,13 @@ services:
   frontend:
     build:
       context: ./frontend
-      target: deps  # Use deps stage for dev
+      dockerfile: Dockerfile
+      target: deps  # Use deps stage for dev (node image, not nginx)
+    image: legion-frontend:dev  # Use different image tag for dev
     volumes:
       - ./frontend/src:/app/src:ro  # Mount source for hot reload
       - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
     ports:
       - "5173:5173"
     environment:
