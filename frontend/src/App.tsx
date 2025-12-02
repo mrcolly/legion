@@ -88,7 +88,7 @@ function App() {
         </h1>
         <p className="app-subtitle">Real-time Global Events</p>
       </header>
-    </div>
+      </div>
   );
 }
 

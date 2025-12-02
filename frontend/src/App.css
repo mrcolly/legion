@@ -150,12 +150,12 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-}
+  }
 
 .error-content button:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-}
+  }
 
 /* Globe tooltip styling (injected by globe.gl) */
 :global(.globe-tooltip) {
@@ -182,14 +182,14 @@
 :global(.globe-tooltip em) {
   color: rgba(255, 255, 255, 0.6) !important;
   font-style: normal !important;
-}
+  }
 
 /* Responsive */
 @media (max-width: 480px) {
   .app-header {
     top: 10px;
     left: 10px;
-  }
+}
 
   .app-title {
     font-size: 22px;

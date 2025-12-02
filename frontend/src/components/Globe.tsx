@@ -160,7 +160,7 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
     });
   }, [data]);
 
-  // Auto-rotate the globe
+  // Auto-rotate the globe and set up interaction listeners
   useEffect(() => {
     if (globeRef.current) {
       logger.info('Globe initialized');
@@ -177,6 +177,30 @@ export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
             controls.autoRotateSpeed = 0.3;
             isInitializedRef.current = true;
             logger.info('Auto-rotation enabled');
+            
+            // Listen for drag/zoom interactions on the controls
+            controls.addEventListener('start', () => {
+              if (isInitializedRef.current) {
+                // Pause auto-rotation
+                controls.autoRotate = false;
+                
+                // Clear any existing resume timeout
+                if (autoRotateTimeoutRef.current) {
+                  clearTimeout(autoRotateTimeoutRef.current);
+                }
+                
+                // Schedule resume
+                autoRotateTimeoutRef.current = setTimeout(() => {
+                  if (globeRef.current) {
+                    const ctrl = globeRef.current.controls();
+                    if (ctrl) {
+                      ctrl.autoRotate = true;
+                      logger.debug('Auto-rotation resumed');
+                    }
+                  }
+                }, AUTO_ROTATE_PAUSE_MS);
+              }
+            });
           }
         }
       }, 1500);
