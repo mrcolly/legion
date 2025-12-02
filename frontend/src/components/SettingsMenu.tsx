@@ -64,4 +64,3 @@ export const SettingsMenu = memo(function SettingsMenu({
     </div>
   );
 });
-

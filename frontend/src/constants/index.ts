@@ -148,4 +148,3 @@ export const TIME = {
   /** Hour when daytime ends */
   DAY_END: 18,
 } as const;
-

@@ -54,4 +54,3 @@ export function clamp(value: number, min: number, max: number): number {
 export function normalize(value: number, min: number, max: number): number {
   return clamp((value - min) / (max - min), 0, 1);
 }
-

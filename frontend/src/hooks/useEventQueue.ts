@@ -34,31 +34,43 @@ export function useEventQueue(
   } = options;
 
   const [visibleEvents, setVisibleEvents] = useState<GeoDataPoint[]>([]);
-  
+
   const queueRef = useRef<GeoDataPoint[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isProcessingRef = useRef(false);
+  const optionsRef = useRef({ displayDelay, maxVisible });
 
-  // Process next event in queue
-  const processQueue = useCallback(() => {
-    if (queueRef.current.length === 0) {
-      isProcessingRef.current = false;
-      return;
-    }
-
-    isProcessingRef.current = true;
-
-    const nextEvent = queueRef.current.shift();
-    if (nextEvent) {
-      setVisibleEvents(prev => [nextEvent, ...prev].slice(0, maxVisible));
-    }
-
-    if (queueRef.current.length > 0) {
-      timerRef.current = setTimeout(processQueue, displayDelay);
-    } else {
-      isProcessingRef.current = false;
-    }
+  // Keep options ref in sync
+  useEffect(() => {
+    optionsRef.current = { displayDelay, maxVisible };
   }, [displayDelay, maxVisible]);
+
+  // Process queue function - stable reference that reads from refs
+  const processQueue = useCallback(() => {
+    const process = () => {
+      if (queueRef.current.length === 0) {
+        isProcessingRef.current = false;
+        return;
+      }
+
+      isProcessingRef.current = true;
+
+      const nextEvent = queueRef.current.shift();
+      if (nextEvent) {
+        setVisibleEvents((prev) =>
+          [nextEvent, ...prev].slice(0, optionsRef.current.maxVisible)
+        );
+      }
+
+      if (queueRef.current.length > 0) {
+        timerRef.current = setTimeout(process, optionsRef.current.displayDelay);
+      } else {
+        isProcessingRef.current = false;
+      }
+    };
+
+    process();
+  }, []);
 
   // Add events to queue
   const queueEvents = useCallback(
@@ -69,12 +81,12 @@ export function useEventQueue(
         processQueue();
       }
     },
-    [processQueue, maxQueueSize]
+    [maxQueueSize, processQueue]
   );
 
   // Dismiss a visible event
   const dismissEvent = useCallback((id: string) => {
-    setVisibleEvents(prev => prev.filter(e => e.id !== id));
+    setVisibleEvents((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
   // Clear all events
@@ -104,4 +116,3 @@ export function useEventQueue(
     clearEvents,
   };
 }
-
