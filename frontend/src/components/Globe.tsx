@@ -62,7 +62,7 @@ export const Globe = memo(function Globe({
   const pointsCacheRef = useRef<Map<string, GlobePoint>>(new Map());
 
   // State
-  const [altitude, setAltitude] = useState(GLOBE.DEFAULT_ALTITUDE);
+  const [altitude, setAltitude] = useState<number>(GLOBE.DEFAULT_ALTITUDE);
   const [dimensions, setDimensions] = useState({ width: globalThis.innerWidth, height: globalThis.innerHeight });
   const [eventPositions, setEventPositions] = useState<Map<string, ScreenPosition>>(new Map());
   const [hoveredGlobePoint, setHoveredGlobePoint] = useState<GlobePoint | null>(null);
@@ -346,8 +346,8 @@ export const Globe = memo(function Globe({
     // Disable point transition animations to prevent "growing" effect
     // Access the underlying globe.gl instance
     const globe = globeRef.current;
-    if (typeof globe.pointTransitionDuration === 'function') {
-      globe.pointTransitionDuration(0);
+    if (typeof globe.pointsTransitionDuration === 'function') {
+      globe.pointsTransitionDuration(0);
     }
     
     globe.pointOfView(
@@ -477,7 +477,7 @@ export const Globe = memo(function Globe({
         pointColor="color"
         pointLabel={() => ''}
         pointResolution={GLOBE.POINT_RESOLUTION}
-        pointTransitionDuration={0}
+        pointsTransitionDuration={0}
         onPointClick={handlePointClick}
         onPointHover={handlePointHover}
         atmosphereColor={COLORS.ATMOSPHERE}
