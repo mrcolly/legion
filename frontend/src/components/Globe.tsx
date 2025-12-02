@@ -46,20 +46,90 @@ function getPointSize(point: GeoDataPoint): number {
   return base + variation;
 }
 
+/**
+ * Scatter crowded points to make them visible
+ * Points within the same grid cell get offset in a spiral pattern
+ */
+function scatterCrowdedPoints(points: GeoDataPoint[]): Map<string, { lat: number; lng: number }> {
+  const GRID_SIZE = 0.5; // ~50km grid cells
+  const SCATTER_RADIUS = 0.3; // Max scatter distance in degrees
+  
+  // Group points by grid cell
+  const gridCells = new Map<string, GeoDataPoint[]>();
+  
+  for (const point of points) {
+    const cellX = Math.floor(point.location.longitude / GRID_SIZE);
+    const cellY = Math.floor(point.location.latitude / GRID_SIZE);
+    const cellKey = `${cellX},${cellY}`;
+    
+    if (!gridCells.has(cellKey)) {
+      gridCells.set(cellKey, []);
+    }
+    gridCells.get(cellKey)!.push(point);
+  }
+  
+  // Calculate scattered positions
+  const scatteredPositions = new Map<string, { lat: number; lng: number }>();
+  
+  for (const [, cellPoints] of gridCells) {
+    if (cellPoints.length === 1) {
+      // Single point - no scattering needed
+      const p = cellPoints[0];
+      scatteredPositions.set(p.id, {
+        lat: p.location.latitude,
+        lng: p.location.longitude,
+      });
+    } else {
+      // Multiple points - scatter in spiral pattern
+      const centerLat = cellPoints.reduce((sum, p) => sum + p.location.latitude, 0) / cellPoints.length;
+      const centerLng = cellPoints.reduce((sum, p) => sum + p.location.longitude, 0) / cellPoints.length;
+      
+      cellPoints.forEach((point, index) => {
+        if (index === 0) {
+          // First point stays at center
+          scatteredPositions.set(point.id, { lat: centerLat, lng: centerLng });
+        } else {
+          // Spiral pattern for others
+          const angle = (index * 137.5 * Math.PI) / 180; // Golden angle for even distribution
+          const radius = SCATTER_RADIUS * Math.sqrt(index / cellPoints.length);
+          
+          scatteredPositions.set(point.id, {
+            lat: centerLat + radius * Math.sin(angle),
+            lng: centerLng + radius * Math.cos(angle),
+          });
+        }
+      });
+    }
+  }
+  
+  return scatteredPositions;
+}
+
 export function Globe({ data, onPointClick, onPointHover }: GlobeProps) {
   const globeRef = useRef<any>(null);
 
-  // Transform data to globe point format
+  // Transform data to globe point format with scatter for crowded points
   const globePoints: GlobePoint[] = useMemo(() => {
     logger.debug({ pointCount: data.length }, 'Transforming data to globe points');
-    return data.map((point) => ({
-      lat: point.location.latitude,
-      lng: point.location.longitude,
-      size: getPointSize(point),
-      color: getPointColor(point),
-      label: point.title,
-      data: point,
-    }));
+    
+    // Calculate scattered positions for crowded points
+    const scatteredPositions = scatterCrowdedPoints(data);
+    
+    return data.map((point) => {
+      const position = scatteredPositions.get(point.id) || {
+        lat: point.location.latitude,
+        lng: point.location.longitude,
+      };
+      
+      return {
+        lat: position.lat,
+        lng: position.lng,
+        size: getPointSize(point),
+        color: getPointColor(point),
+        label: point.title,
+        data: point,
+      };
+    });
   }, [data]);
 
   // Auto-rotate the globe
