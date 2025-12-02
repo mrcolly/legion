@@ -48,4 +48,3 @@ docker run -p 3000:3000 legion-backend
 ```
 
 See root [README](../README.md) for full documentation.
-
