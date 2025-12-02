@@ -115,18 +115,21 @@ export class GDELTSource extends DataSourceService {
 
       this.logger.debug({ count: articlesToProcess.length }, 'Articles to process');
 
-      // Transform articles to GeoDataPoints
+      // Transform articles to GeoDataPoints in parallel, streaming as ready
       const geoDataPoints: GeoDataPoint[] = [];
       
-      for (let i = 0; i < articlesToProcess.length; i++) {
-        const article = articlesToProcess[i];
-        const point = await this.transformArticle(article, i);
-        
-        // Skip articles we couldn't geolocate
-        if (point) {
-          geoDataPoints.push(point);
-        }
-      }
+      await Promise.all(
+        articlesToProcess.map(async (article, i) => {
+          const point = await this.transformArticle(article, i);
+          
+          // Skip articles we couldn't geolocate
+          if (point) {
+            // Stream the point immediately
+            this.emitDataPoint(point);
+            geoDataPoints.push(point);
+          }
+        })
+      );
 
       // Log breakdown
       const preciseCount = geoDataPoints.filter(p => p.metadata?.geoType === 'precise').length;

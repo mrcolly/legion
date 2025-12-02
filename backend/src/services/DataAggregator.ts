@@ -31,9 +31,14 @@ export class DataAggregator extends EventEmitter {
 
     this.sources.set(source.getName(), source);
     
-    // Set up callback for this source to update cache
+    // Set up batch callback for this source (backward compatibility)
     source.setDataUpdateCallback((sourceName, data) => {
       this.handleSourceUpdate(sourceName, data);
+    });
+
+    // Set up streaming callback for real-time data points
+    source.setDataPointStreamCallback((sourceName, point) => {
+      this.handleStreamedDataPoint(sourceName, point);
     });
     
     this.logger.info({ source: source.getName() }, 'Registered data source');
@@ -55,7 +60,47 @@ export class DataAggregator extends EventEmitter {
   }
 
   /**
-   * Handle update from a single source
+   * Handle a single streamed data point (real-time)
+   * Called as soon as a data point is ready from any source
+   */
+  private handleStreamedDataPoint(sourceName: string, point: GeoDataPoint): void {
+    // Skip if we've already seen this hash
+    if (point.hash && this.seenHashes.has(point.hash)) {
+      return;
+    }
+
+    // Mark as seen
+    if (point.hash) {
+      this.seenHashes.add(point.hash);
+    }
+
+    // Get or create source data array
+    const sourceData = this.sourceData.get(sourceName) || [];
+    sourceData.push(point);
+    this.sourceData.set(sourceName, sourceData);
+
+    // Add to cache
+    this.cache.push(point);
+    this.lastUpdate = new Date();
+
+    // Emit event for real-time updates (single point)
+    this.emit('data-updated', {
+      source: sourceName,
+      newDataCount: 1,
+      totalCount: this.cache.length,
+      newData: [point],
+      timestamp: new Date(),
+    });
+
+    this.logger.debug({
+      source: sourceName,
+      title: point.title?.substring(0, 40),
+      totalCache: this.cache.length,
+    }, `⚡ Streamed point added`);
+  }
+
+  /**
+   * Handle update from a single source (batch mode)
    * Called when a source fetches new data (either initial or auto-refresh)
    * Only adds NEW data points that haven't been seen before
    * Emits 'data-updated' event when new data is added

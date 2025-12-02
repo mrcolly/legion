@@ -240,20 +240,28 @@ export class RSSSource extends DataSourceService {
     this.logger.debug({ feedCount: this.feeds.length }, 'Fetching RSS feeds...');
 
     const allPoints: GeoDataPoint[] = [];
-    const results = await Promise.allSettled(
-      this.feeds.map((feed) => this.fetchFeed(feed))
-    );
-
     let successCount = 0;
     let errorCount = 0;
 
+    // Fetch all feeds in parallel, streaming points as they're ready
+    const results = await Promise.allSettled(
+      this.feeds.map(async (feed) => {
+        try {
+          const points = await this.fetchFeedStreaming(feed);
+          successCount++;
+          return points;
+        } catch (error) {
+          errorCount++;
+          this.logger.debug({ feed: feed.name, error }, 'Feed fetch failed');
+          return [];
+        }
+      })
+    );
+
+    // Collect all points for backward compatibility
     for (const result of results) {
       if (result.status === 'fulfilled') {
         allPoints.push(...result.value);
-        successCount++;
-      } else {
-        errorCount++;
-        this.logger.debug({ error: result.reason }, 'Feed fetch failed');
       }
     }
 
@@ -270,30 +278,32 @@ export class RSSSource extends DataSourceService {
     return allPoints;
   }
 
-  private async fetchFeed(feed: FeedConfig): Promise<GeoDataPoint[]> {
-    try {
-      const parsed = await this.parser.parseURL(feed.url);
-      const items = parsed.items.slice(0, this.itemsPerFeed);
+  /**
+   * Fetch a single feed and stream points as they're ready
+   */
+  private async fetchFeedStreaming(feed: FeedConfig): Promise<GeoDataPoint[]> {
+    const parsed = await this.parser.parseURL(feed.url);
+    const items = parsed.items.slice(0, this.itemsPerFeed);
+    const points: GeoDataPoint[] = [];
 
-      const points: GeoDataPoint[] = [];
-
-      for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-        if (!item.title) continue;
+    // Process items in parallel for this feed
+    await Promise.all(
+      items.map(async (item, index) => {
+        if (!item.title) return;
 
         const point = await this.transformItem(
           item as FeedItem & { title: string },
           feed,
           index
         );
+        
+        // Stream the point immediately
+        this.emitDataPoint(point);
         points.push(point);
-      }
+      })
+    );
 
-      return points;
-    } catch (error) {
-      this.logger.warn({ feed: feed.name, error }, 'Failed to fetch feed');
-      return [];
-    }
+    return points;
   }
 
   private async transformItem(

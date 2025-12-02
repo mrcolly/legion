@@ -2,9 +2,14 @@ import { GeoDataPoint, DataSourceConfig, DataSourceStats } from '../types/GeoDat
 import { createLogger } from '../utils/logger';
 
 /**
- * Callback function when data source has new data
+ * Callback function when data source has new data (batch)
  */
 export type DataUpdateCallback = (sourceName: string, data: GeoDataPoint[]) => void;
+
+/**
+ * Callback for streaming individual data points as they're ready
+ */
+export type DataPointStreamCallback = (sourceName: string, point: GeoDataPoint) => void;
 
 /**
  * Abstract interface that all data sources must implement
@@ -17,6 +22,7 @@ export abstract class DataSourceService {
   protected logger: ReturnType<typeof createLogger>;
   private refreshTimer?: NodeJS.Timeout;
   private onDataUpdate?: DataUpdateCallback;
+  private onDataPointStream?: DataPointStreamCallback;
 
   constructor(config: DataSourceConfig) {
     this.config = config;
@@ -85,10 +91,26 @@ export abstract class DataSourceService {
   }
 
   /**
-   * Set the callback to be called when this source has new data
+   * Set the callback to be called when this source has new data (batch)
    */
   setDataUpdateCallback(callback: DataUpdateCallback): void {
     this.onDataUpdate = callback;
+  }
+
+  /**
+   * Set the callback for streaming individual data points
+   */
+  setDataPointStreamCallback(callback: DataPointStreamCallback): void {
+    this.onDataPointStream = callback;
+  }
+
+  /**
+   * Emit a single data point immediately (for streaming)
+   */
+  protected emitDataPoint(point: GeoDataPoint): void {
+    if (this.onDataPointStream) {
+      this.onDataPointStream(this.getName(), point);
+    }
   }
 
   /**
