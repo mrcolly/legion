@@ -5,6 +5,9 @@ import { createLogger } from '../utils/logger';
 
 const logger = createLogger({ hook: 'useGeoData' });
 
+// Maximum number of points to keep on the map
+const MAX_POINTS = 1000;
+
 interface UseGeoDataOptions {
   autoRefresh?: boolean;
   limit?: number;
@@ -51,15 +54,16 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       logger.debug({ limit }, 'Fetching geo data');
       const geoData = await fetchGeoData({ sort: 'desc', limit });
       
-      // Store in map for deduplication
+      // Store in map for deduplication, limited to MAX_POINTS
       dataMapRef.current.clear();
-      geoData.forEach(point => {
+      const limitedData = geoData.slice(0, MAX_POINTS);
+      limitedData.forEach(point => {
         const key = point.hash || point.id;
         dataMapRef.current.set(key, point);
       });
       
-      logger.info({ count: geoData.length }, 'Geo data loaded');
-      setData(geoData);
+      logger.info({ count: limitedData.length, maxPoints: MAX_POINTS }, 'Geo data loaded');
+      setData(limitedData);
       setLastUpdate(new Date());
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
@@ -97,10 +101,21 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
         setPendingEvents(prev => [...newEvents, ...prev].slice(0, 20)); // Keep max 20 pending
       }
       
-      // Update state with sorted data (newest first)
-      const allData = Array.from(dataMapRef.current.values()).sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
+      // Update state with sorted data (newest first), limited to MAX_POINTS
+      const allData = Array.from(dataMapRef.current.values())
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, MAX_POINTS);
+      
+      // Trim the map to keep only the points we're displaying
+      if (dataMapRef.current.size > MAX_POINTS) {
+        const keysToKeep = new Set(allData.map(p => p.hash || p.id));
+        for (const key of dataMapRef.current.keys()) {
+          if (!keysToKeep.has(key)) {
+            dataMapRef.current.delete(key);
+          }
+        }
+        logger.debug({ trimmedTo: dataMapRef.current.size }, 'Trimmed old points from cache');
+      }
       
       setData(allData);
       setLastUpdate(new Date());
