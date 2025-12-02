@@ -2,13 +2,10 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
-# Install dependencies for build
-FROM base AS deps
+# Build stage - install ALL deps and build
+FROM base AS build
 COPY package.json package-lock.json ./
 RUN npm ci
-
-# Build stage
-FROM deps AS build
 COPY . .
 RUN npm run build
 
