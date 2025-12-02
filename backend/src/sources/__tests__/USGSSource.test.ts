@@ -178,4 +178,3 @@ describe('USGSSource', () => {
     expect(data[0].description).toContain('Tsunami warning');
   });
 });
-

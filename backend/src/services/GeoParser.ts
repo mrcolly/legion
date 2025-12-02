@@ -150,11 +150,35 @@ export class GeoParser {
     // Combine and deduplicate
     const allPlaces = [...new Set([...places, ...topics])];
     
-    // Filter out too short names and clean up
+    // Filter out invalid entries
     return allPlaces
       .map(p => p.trim())
       .filter(p => p.length >= this.options.minLocationLength)
-      .filter(p => !this.isCommonWord(p));
+      .filter(p => !this.isCommonWord(p))
+      .filter(p => !this.isInvalidPlaceName(p));
+  }
+
+  /**
+   * Check if a string is not a valid place name
+   */
+  private isInvalidPlaceName(name: string): boolean {
+    // Filter out hashtags
+    if (name.startsWith('#')) return true;
+    
+    // Filter out @mentions
+    if (name.startsWith('@')) return true;
+    
+    // Filter out URLs
+    if (name.startsWith('http://') || name.startsWith('https://')) return true;
+    
+    // Filter out numbers only
+    if (/^\d+$/.test(name)) return true;
+    
+    // Filter out strings with too many special characters
+    const specialCharCount = (name.match(/[^a-zA-Z\s]/g) || []).length;
+    if (specialCharCount > name.length * 0.3) return true;
+    
+    return false;
   }
 
   /**

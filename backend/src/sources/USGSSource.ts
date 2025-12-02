@@ -206,4 +206,3 @@ export class USGSSource extends DataSourceService {
     return parts.join(' | ');
   }
 }
-

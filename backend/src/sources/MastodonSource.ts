@@ -236,4 +236,3 @@ export class MastodonSource extends DataSourceService {
     return parts.join(' | ');
   }
 }
-

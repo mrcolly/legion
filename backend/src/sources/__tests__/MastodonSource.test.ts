@@ -185,4 +185,3 @@ describe('MastodonSource', () => {
     expect(data[0].description).toContain('⭐ 10'); // favourites
   });
 });
-
