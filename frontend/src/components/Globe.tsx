@@ -56,6 +56,9 @@ export const Globe = memo(function Globe({
   const isInitializedRef = useRef(false);
   const autoRotateEnabledRef = useRef(autoRotate);
   const lastPositionUpdateRef = useRef(0);
+  
+  // Cache for stable globe point references (prevents re-animation)
+  const pointsCacheRef = useRef<Map<string, GlobePoint>>(new Map());
 
   // State
   const [altitude, setAltitude] = useState(GLOBE.DEFAULT_ALTITUDE);
@@ -216,28 +219,52 @@ export const Globe = memo(function Globe({
   );
 
   // ---------------------------------------------------------------------------
-  // Transform data to globe points
+  // Transform data to globe points (with stable references to prevent re-animation)
   // ---------------------------------------------------------------------------
   const globePoints: GlobePoint[] = useMemo(() => {
     logger.debug({ pointCount: data.length }, 'Transforming data to globe points');
 
     const scatteredPositions = scatterCrowdedPoints(data);
+    const cache = pointsCacheRef.current;
+    const currentIds = new Set<string>();
+    const result: GlobePoint[] = [];
 
-    return data.map((point) => {
-      const position = scatteredPositions.get(point.id) || {
-        lat: point.location.latitude,
-        lng: point.location.longitude,
-      };
+    for (const point of data) {
+      const id = point.hash || point.id;
+      currentIds.add(id);
 
-      return {
-        lat: position.lat,
-        lng: position.lng,
-        size: getPointSize(point),
-        color: getPointColor(point),
-        label: point.title,
-        data: point,
-      };
-    });
+      // Check if we already have this point cached
+      let globePoint = cache.get(id);
+
+      if (!globePoint) {
+        // New point - create and cache it
+        const position = scatteredPositions.get(point.id) || {
+          lat: point.location.latitude,
+          lng: point.location.longitude,
+        };
+
+        globePoint = {
+          lat: position.lat,
+          lng: position.lng,
+          size: getPointSize(point),
+          color: getPointColor(point),
+          label: point.title,
+          data: point,
+        };
+        cache.set(id, globePoint);
+      }
+
+      result.push(globePoint);
+    }
+
+    // Clean up old points from cache
+    for (const id of cache.keys()) {
+      if (!currentIds.has(id)) {
+        cache.delete(id);
+      }
+    }
+
+    return result;
   }, [data]);
 
   // ---------------------------------------------------------------------------
@@ -275,7 +302,15 @@ export const Globe = memo(function Globe({
     if (!globeRef.current) return;
 
     logger.info('Globe initialized');
-    globeRef.current.pointOfView(
+    
+    // Disable point transition animations to prevent "growing" effect
+    // Access the underlying globe.gl instance
+    const globe = globeRef.current;
+    if (typeof globe.pointTransitionDuration === 'function') {
+      globe.pointTransitionDuration(0);
+    }
+    
+    globe.pointOfView(
       { lat: GLOBE.INITIAL_LAT, lng: GLOBE.INITIAL_LNG, altitude: GLOBE.DEFAULT_ALTITUDE },
       GLOBE.ANIMATION_DURATION
     );

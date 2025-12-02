@@ -155,7 +155,7 @@
 
 /* Hover toast - more subtle appearance */
 .event-toast.hover-toast {
-  animation: fadeIn 0.15s ease-out;
+  animation: hoverFadeIn 0.15s ease-out;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(78, 205, 196, 0.15);
   border-color: rgba(78, 205, 196, 0.3);
   z-index: 1500; /* Below event toasts */
@@ -165,14 +165,12 @@
   animation: none; /* No pulse for hover */
 }
 
-@keyframes fadeIn {
+@keyframes hoverFadeIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -100%) translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -100%) translateY(-20px);
   }
 }
 
