@@ -17,7 +17,7 @@
 /* Stats bar */
 .stats-bar {
   display: flex;
-  gap: 16px;
+  justify-content: space-between;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 16px;
@@ -28,12 +28,18 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .stat-value {
   font-size: 18px;
   font-weight: 600;
   color: #fff;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stat-label {
@@ -44,8 +50,8 @@
 }
 
 .connection-dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   animation: pulse 2s infinite;
 }

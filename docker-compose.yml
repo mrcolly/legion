@@ -11,8 +11,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - USE_DEMO=false
-      - USE_GDELT=true
-      - USE_RSS=true
+      - USE_GDELT=false
+      - USE_RSS=false
       - USE_USGS=true
       - USE_EONET=true
       - USE_MASTODON=true
