@@ -12,6 +12,7 @@ services:
       - ./backend/src:/app/src:ro  # Mount source for hot reload
     environment:
       - NODE_ENV=development
+      - USE_DEMO=true
       - LOG_LEVEL=debug
     command: ["npx", "tsx", "watch", "src/index.ts"]
 

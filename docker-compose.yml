@@ -10,8 +10,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - USE_DEMO=true
+      - USE_DEMO=false
       - USE_GDELT=true
+      - USE_RSS=true
       - LOG_LEVEL=info
     restart: unless-stopped
     healthcheck:

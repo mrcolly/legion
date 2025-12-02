@@ -170,17 +170,16 @@ export const Globe = memo(function Globe({
   }, [pendingEvents, getScreenPosition]);
 
   // ---------------------------------------------------------------------------
-  // Update hover position (throttled animation loop)
+  // Update hover position (throttled animation loop) - position is already set in handlePointHover
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!hoveredGlobePoint) {
-      setHoverPosition(null);
-      return;
+      return; // Position already cleared in handlePointHover
     }
 
     let animationId: number;
     let isRunning = true;
-    let lastUpdate = 0;
+    let lastUpdate = Date.now(); // Start from now since initial position is already set
 
     const updatePosition = () => {
       if (!isRunning) return;
@@ -194,7 +193,7 @@ export const Globe = memo(function Globe({
       animationId = requestAnimationFrame(updatePosition);
     };
 
-    setHoverPosition(getScreenPosition(hoveredGlobePoint.lat, hoveredGlobePoint.lng));
+    // Don't set initial position here - already done in handlePointHover
     animationId = requestAnimationFrame(updatePosition);
 
     return () => {
@@ -324,6 +323,15 @@ export const Globe = memo(function Globe({
   const handlePointHover = useCallback(
     (point: object | null) => {
       const globePoint = point as GlobePoint | null;
+      
+      // Calculate position IMMEDIATELY before setting state to avoid flash
+      if (globePoint) {
+        const pos = getScreenPosition(globePoint.lat, globePoint.lng);
+        setHoverPosition(pos);
+      } else {
+        setHoverPosition(null);
+      }
+      
       setHoveredGlobePoint(globePoint);
       onPointHover?.(globePoint?.data || null);
 
@@ -342,7 +350,7 @@ export const Globe = memo(function Globe({
         scheduleAutoRotateResume(AUTO_ROTATE.HOVER_PAUSE_DURATION);
       }
     },
-    [onPointHover, pauseAutoRotate, scheduleAutoRotateResume]
+    [onPointHover, pauseAutoRotate, scheduleAutoRotateResume, getScreenPosition]
   );
 
   const handleZoom = useCallback(
@@ -392,6 +400,7 @@ export const Globe = memo(function Globe({
         pointColor="color"
         pointLabel={() => ''}
         pointResolution={GLOBE.POINT_RESOLUTION}
+        pointTransitionDuration={0}
         onPointClick={handlePointClick}
         onPointHover={handlePointHover}
         atmosphereColor={COLORS.ATMOSPHERE}
