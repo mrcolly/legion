@@ -9,6 +9,7 @@ import { createLogger } from '../utils/logger';
  * Emits events when cache is updated
  */
 export class DataAggregator extends EventEmitter {
+  private static readonly MAX_CACHE_SIZE = 10000; // Maximum points to keep in cache
   private readonly sources: Map<string, DataSourceService> = new Map();
   private readonly sourceData: Map<string, GeoDataPoint[]> = new Map();
   private readonly seenHashes: Set<string> = new Set(); // Track seen data point hashes
@@ -79,8 +80,17 @@ export class DataAggregator extends EventEmitter {
     sourceData.push(point);
     this.sourceData.set(sourceName, sourceData);
 
-    // Add to cache
-    this.cache.push(point);
+    // Add to cache (at the beginning since it's newest)
+    this.cache.unshift(point);
+    
+    // Enforce cache limit
+    if (this.cache.length > DataAggregator.MAX_CACHE_SIZE) {
+      const removed = this.cache.pop();
+      if (removed?.hash) {
+        this.seenHashes.delete(removed.hash);
+      }
+    }
+    
     this.lastUpdate = new Date();
 
     // Emit event for real-time updates (single point)
@@ -154,7 +164,7 @@ export class DataAggregator extends EventEmitter {
 
   /**
    * Rebuild cache by merging data from all sources that have provided data
-   * No deduplication needed here since we use hash-based filtering on input
+   * Enforces MAX_CACHE_SIZE limit, keeping newest data
    */
   private rebuildCache(): void {
     // Merge all source data
@@ -163,8 +173,35 @@ export class DataAggregator extends EventEmitter {
       allData.push(...data);
     }
 
-    // Update cache (no deduplication needed, already done via hashes)
-    this.cache = allData;
+    // Sort by timestamp (newest first) and limit
+    allData.sort((a, b) => {
+      const timeA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : a.timestamp;
+      const timeB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : b.timestamp;
+      return timeB - timeA;
+    });
+
+    // Enforce cache size limit
+    if (allData.length > DataAggregator.MAX_CACHE_SIZE) {
+      const trimmed = allData.slice(0, DataAggregator.MAX_CACHE_SIZE);
+      
+      // Clean up seenHashes for removed items
+      const keptHashes = new Set(trimmed.map(p => p.hash).filter(Boolean));
+      for (const hash of this.seenHashes) {
+        if (!keptHashes.has(hash)) {
+          this.seenHashes.delete(hash);
+        }
+      }
+      
+      this.logger.info({ 
+        before: allData.length, 
+        after: trimmed.length 
+      }, `Cache trimmed to ${DataAggregator.MAX_CACHE_SIZE} points`);
+      
+      this.cache = trimmed;
+    } else {
+      this.cache = allData;
+    }
+    
     this.lastUpdate = new Date();
   }
 
@@ -298,6 +335,7 @@ export class DataAggregator extends EventEmitter {
   getCacheStats() {
     return {
       totalPoints: this.cache.length,
+      maxPoints: DataAggregator.MAX_CACHE_SIZE,
       uniqueHashes: this.seenHashes.size,
       sourceCount: this.sourceData.size,
       lastUpdate: this.lastUpdate,

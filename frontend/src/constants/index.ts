@@ -81,7 +81,7 @@ export const POINT_SIZE = {
 
 export const DATA = {
   /** Maximum points to display on map */
-  MAX_POINTS: 1000,
+  MAX_POINTS: 5000,
   /** Maximum events in queue */
   MAX_QUEUE_SIZE: 50,
   /** Maximum visible toasts */
