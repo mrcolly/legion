@@ -176,6 +176,7 @@ function App() {
         lastUpdate={lastUpdate}
         newDataCount={newDataCount}
         onClose={handleCloseDetails}
+        allSourcesDisabled={activeSources.length === 0}
       />
 
       {/* Header */}

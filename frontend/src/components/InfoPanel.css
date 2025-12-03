@@ -68,6 +68,12 @@
   animation: none;
 }
 
+.connection-dot.paused {
+  background: #ffe66d;
+  box-shadow: 0 0 10px #ffe66d;
+  animation: none;
+}
+
 .new-data .stat-value {
   color: #4ecdc4;
   animation: fadeIn 0.5s ease;

@@ -8,6 +8,7 @@ interface InfoPanelProps {
   lastUpdate: Date | null;
   newDataCount: number;
   onClose: () => void;
+  allSourcesDisabled?: boolean;
 }
 
 export const InfoPanel = memo(function InfoPanel({
@@ -16,14 +17,28 @@ export const InfoPanel = memo(function InfoPanel({
   lastUpdate,
   newDataCount,
   onClose,
+  allSourcesDisabled = false,
 }: InfoPanelProps) {
+  // Determine connection status display
+  const getStatusDisplay = () => {
+    if (allSourcesDisabled) {
+      return { className: 'paused', label: 'Paused' };
+    }
+    if (isConnected) {
+      return { className: 'connected', label: 'Live' };
+    }
+    return { className: 'disconnected', label: 'Offline' };
+  };
+
+  const status = getStatusDisplay();
+
   return (
     <div className="info-panel">
       {/* Stats header */}
       <div className="stats-bar">
         <div className="stat stat-status">
-          <span className={`connection-dot ${isConnected ? 'connected' : 'disconnected'}`} />
-          <span className="stat-label">{isConnected ? 'Live' : 'Offline'}</span>
+          <span className={`connection-dot ${status.className}`} />
+          <span className="stat-label">{status.label}</span>
         </div>
         {newDataCount > 0 && (
           <div className="stat new-data">
