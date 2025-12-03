@@ -70,7 +70,7 @@ let issSource: ISSSource | null = null;
 
 if (ENABLE_ISS) {
   logger.info('🛰️ Enabling moving objects tracking');
-  movingObjectTracker = new MovingObjectTracker(100); // Keep last 100 positions for trajectory
+  movingObjectTracker = new MovingObjectTracker(50); // Keep last 50 positions for trajectory
   setMovingObjectTracker(movingObjectTracker);
   
   // Add ISS source

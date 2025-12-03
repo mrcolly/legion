@@ -9,7 +9,7 @@ import { createLogger } from '../utils/logger';
  * Emits events when cache is updated
  */
 export class DataAggregator extends EventEmitter {
-  private static readonly MAX_CACHE_SIZE = 10000; // Maximum points to keep in cache
+  private static readonly MAX_CACHE_SIZE = 5000; // Maximum points to keep in cache
   private readonly sources: Map<string, DataSourceService> = new Map();
   private readonly sourceData: Map<string, GeoDataPoint[]> = new Map();
   private readonly seenHashes: Set<string> = new Set(); // Track seen data point hashes
