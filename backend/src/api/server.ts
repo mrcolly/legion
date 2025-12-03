@@ -8,6 +8,7 @@ import { logger } from '../utils/logger';
 interface SSEClient {
   id: string;
   response: Response;
+  sources?: string[]; // Optional source filter for this client
 }
 
 const sseClients: SSEClient[] = [];
@@ -59,10 +60,33 @@ export function createServer(aggregator: DataAggregator) {
     });
   });
 
-  // Get all data points
+  // Get available data sources
+  app.get('/api/sources/available', (_req: Request, res: Response) => {
+    try {
+      const sources = aggregator.getSourcesInfo();
+      res.json({
+        success: true,
+        sources,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Error getting available sources');
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve available sources',
+      });
+    }
+  });
+
+  // Get all data points (optionally filtered by sources)
   app.get('/api/data', async (req: Request, res: Response) => {
     try {
-      let data = aggregator.getCachedData();
+      // Parse sources filter (comma-separated)
+      const sourcesParam = req.query.sources as string | undefined;
+      const sourcesFilter = sourcesParam 
+        ? sourcesParam.split(',').map(s => s.trim()).filter(Boolean)
+        : undefined;
+      
+      let data = aggregator.getCachedData(sourcesFilter);
       
       // Optional sorting by timestamp
       const sortOrder = (req.query.sort as string) || 'desc'; // Default: newest first
@@ -86,6 +110,7 @@ export function createServer(aggregator: DataAggregator) {
         count: data.length,
         total: aggregator.getCachedData().length,
         lastUpdate: aggregator.getLastUpdateTime(),
+        sources: sourcesFilter,
         data,
       });
     } catch (error) {
@@ -274,6 +299,7 @@ export function createServer(aggregator: DataAggregator) {
   });
 
   // Server-Sent Events (SSE) endpoint for real-time updates
+  // Supports ?sources=gdelt,usgs to filter updates by source
   app.get('/api/stream', (req: Request, res: Response) => {
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
@@ -281,19 +307,28 @@ export function createServer(aggregator: DataAggregator) {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in nginx
 
+    // Parse sources filter (comma-separated)
+    const sourcesParam = req.query.sources as string | undefined;
+    const sourcesFilter = sourcesParam 
+      ? sourcesParam.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+      : undefined;
+
     const clientId = `client-${Date.now()}-${Math.random()}`;
-    const client: SSEClient = { id: clientId, response: res };
+    const client: SSEClient = { id: clientId, response: res, sources: sourcesFilter };
 
     // Add client to list
     sseClients.push(client);
-    logger.info({ clientId, totalClients: sseClients.length }, '📡 SSE client connected');
+    logger.info({ clientId, totalClients: sseClients.length, sources: sourcesFilter }, '📡 SSE client connected');
 
-    // Send initial connection message
+    // Send initial connection message with filtered data count
+    const initialData = aggregator.getCachedData(sourcesFilter);
     res.write(`data: ${JSON.stringify({
       type: 'connected',
       clientId,
       timestamp: new Date(),
-      totalDataPoints: aggregator.getCachedData().length,
+      totalDataPoints: initialData.length,
+      sources: sourcesFilter,
+      availableSources: aggregator.getAvailableSourceNames(),
       movingObjects: movingObjectTracker?.getAllObjects() ?? [],
     })}\n\n`);
 
@@ -318,19 +353,31 @@ export function createServer(aggregator: DataAggregator) {
 
 /**
  * Broadcast message to all connected SSE clients
+ * Filters data-updated events by client's source subscription
  */
 function broadcastToSSEClients(data: any): void {
-  const message = `data: ${JSON.stringify(data)}\n\n`;
+  let sentCount = 0;
   
   sseClients.forEach((client) => {
     try {
+      // For data-updated events, check if client is subscribed to this source
+      if (data.type === 'data-updated' && client.sources && client.sources.length > 0) {
+        const eventSource = data.source?.toLowerCase();
+        if (eventSource && !client.sources.includes(eventSource)) {
+          // Client is not subscribed to this source, skip
+          return;
+        }
+      }
+      
+      const message = `data: ${JSON.stringify(data)}\n\n`;
       client.response.write(message);
+      sentCount++;
     } catch (error) {
       logger.error({ clientId: client.id, error }, 'Error sending to SSE client');
     }
   });
   
-  if (sseClients.length > 0) {
-    logger.debug({ clientCount: sseClients.length }, '📡 Broadcasted to SSE clients');
+  if (sentCount > 0) {
+    logger.debug({ sentCount, totalClients: sseClients.length }, '📡 Broadcasted to SSE clients');
   }
 }

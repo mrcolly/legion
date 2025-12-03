@@ -10,11 +10,35 @@ const API_BASE_URL = import.meta.env.VITE_API_URL === undefined
 apiLogger.debug({ apiUrl: API_BASE_URL }, 'API client initialized');
 
 /**
+ * Source info from the backend
+ */
+export interface SourceInfo {
+  name: string;
+  enabled: boolean;
+  pointCount: number;
+}
+
+/**
+ * Fetch available data sources from the backend
+ */
+export async function fetchAvailableSources(): Promise<SourceInfo[]> {
+  const response = await fetch(`${API_BASE_URL}/api/sources/available`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sources: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  return result.sources || [];
+}
+
+/**
  * Fetch all geo data points from the backend
  */
 export async function fetchGeoData(options?: {
   sort?: 'asc' | 'desc';
   limit?: number;
+  sources?: string[];
 }): Promise<GeoDataPoint[]> {
   const params = new URLSearchParams();
   
@@ -23,6 +47,9 @@ export async function fetchGeoData(options?: {
   }
   if (options?.limit) {
     params.set('limit', options.limit.toString());
+  }
+  if (options?.sources && options.sources.length > 0) {
+    params.set('sources', options.sources.join(','));
   }
 
   const queryString = params.toString();
@@ -87,14 +114,26 @@ export async function refreshData(): Promise<GeoDataPoint[]> {
 
 /**
  * Subscribe to real-time data updates via Server-Sent Events
+ * Optionally filter by sources
  */
 export function subscribeToUpdates(
   onUpdate: (event: DataUpdateEvent) => void,
-  onError?: (error: Event) => void
+  onError?: (error: Event) => void,
+  sources?: string[]
 ): () => void {
-  const eventSource = new EventSource(`${API_BASE_URL}/api/stream`);
+  const params = new URLSearchParams();
+  if (sources && sources.length > 0) {
+    params.set('sources', sources.join(','));
+  }
+  
+  const queryString = params.toString();
+  const url = queryString 
+    ? `${API_BASE_URL}/api/stream?${queryString}` 
+    : `${API_BASE_URL}/api/stream`;
 
-  sseLogger.info('SSE connection established');
+  const eventSource = new EventSource(url);
+
+  sseLogger.info({ sources }, 'SSE connection established');
 
   eventSource.onmessage = (event) => {
     try {

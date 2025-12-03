@@ -19,6 +19,7 @@ const logger = createLogger({ hook: 'useGeoData' });
 interface UseGeoDataOptions {
   autoRefresh?: boolean;
   limit?: number;
+  sources?: string[]; // Filter by data sources
 }
 
 interface UseGeoDataReturn {
@@ -38,7 +39,10 @@ interface UseGeoDataReturn {
 // =============================================================================
 
 export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
-  const { autoRefresh = true, limit } = options;
+  const { autoRefresh = true, limit, sources } = options;
+  
+  // Stringify sources for stable dependency comparison
+  const sourcesKey = sources?.sort().join(',') || '';
 
   // State
   const [data, setData] = useState<GeoDataPoint[]>([]);
@@ -67,8 +71,8 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       setLoading(true);
       setError(null);
 
-      logger.debug({ limit }, 'Fetching geo data');
-      const geoData = await fetchGeoData({ sort: 'desc', limit });
+      logger.debug({ limit, sources }, 'Fetching geo data');
+      const geoData = await fetchGeoData({ sort: 'desc', limit, sources });
 
       // Store in map for deduplication
       dataMapRef.current.clear();
@@ -78,7 +82,7 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
         dataMapRef.current.set(key, point);
       });
 
-      logger.info({ count: limitedData.length, maxPoints: DATA.MAX_POINTS }, 'Geo data loaded');
+      logger.info({ count: limitedData.length, maxPoints: DATA.MAX_POINTS, sources }, 'Geo data loaded');
       setData(limitedData);
       setLastUpdate(new Date());
     } catch (err) {
@@ -88,7 +92,7 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, sources]);
 
   // ---------------------------------------------------------------------------
   // Debounced data update
@@ -185,7 +189,8 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       },
       () => {
         setIsConnected(false);
-      }
+      },
+      sources
     );
 
     const timeout = setTimeout(() => setIsConnected(true), 1000);
@@ -194,7 +199,7 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       clearTimeout(timeout);
       unsubscribe();
     };
-  }, [autoRefresh, handleUpdate]);
+  }, [autoRefresh, handleUpdate, sourcesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset new data count every minute
   useEffect(() => {

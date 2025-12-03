@@ -10,9 +10,9 @@ import { createGeoDataPoint } from '../../utils/hashUtils';
 class MockDataSource extends DataSourceService {
   private readonly mockData: GeoDataPoint[] = [];
 
-  constructor(data: Omit<GeoDataPoint, 'hash'>[] = []) {
+  constructor(name: string, data: Omit<GeoDataPoint, 'hash'>[] = []) {
     super({
-      name: 'MockSource',
+      name,
       enabled: true,
       refreshInterval: 1000,
     });
@@ -61,7 +61,7 @@ describe('API Server', () => {
       },
     ];
 
-    const source = new MockDataSource(mockData);
+    const source = new MockDataSource('MockSource', mockData);
     aggregator.registerSource(source);
     await aggregator.fetchAll();
 
@@ -214,6 +214,95 @@ describe('API Server', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.lastUpdate).toBeDefined();
+    });
+  });
+
+  describe('GET /api/sources/available', () => {
+    it('should return available sources with point counts', async () => {
+      const response = await request(app).get('/api/sources/available');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.sources).toHaveLength(1);
+      expect(response.body.sources[0]).toMatchObject({
+        name: 'MockSource',
+        enabled: true,
+        pointCount: 3,
+      });
+    });
+  });
+
+  describe('GET /api/data with source filtering', () => {
+    let multiSourceApp: Express.Application;
+    let multiSourceAggregator: DataAggregator;
+
+    beforeEach(async () => {
+      multiSourceAggregator = new DataAggregator();
+
+      const source1Data: Omit<GeoDataPoint, 'hash'>[] = [
+        {
+          id: 'src1-1',
+          timestamp: new Date('2025-01-01T12:00:00Z'),
+          location: { latitude: 40.7128, longitude: -74.006 },
+          title: 'Source 1 Event',
+          source: 'Source1',
+        },
+      ];
+
+      const source2Data: Omit<GeoDataPoint, 'hash'>[] = [
+        {
+          id: 'src2-1',
+          timestamp: new Date('2025-01-01T13:00:00Z'),
+          location: { latitude: 51.5074, longitude: -0.1278 },
+          title: 'Source 2 Event',
+          source: 'Source2',
+        },
+      ];
+
+      multiSourceAggregator.registerSource(new MockDataSource('Source1', source1Data));
+      multiSourceAggregator.registerSource(new MockDataSource('Source2', source2Data));
+      await multiSourceAggregator.fetchAll();
+
+      multiSourceApp = createServer(multiSourceAggregator);
+    });
+
+    it('should filter data by single source', async () => {
+      const response = await request(multiSourceApp).get('/api/data?sources=Source1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(1);
+      expect(response.body.data[0].title).toBe('Source 1 Event');
+      expect(response.body.sources).toEqual(['Source1']);
+    });
+
+    it('should filter data by multiple sources', async () => {
+      const response = await request(multiSourceApp).get('/api/data?sources=Source1,Source2');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(2);
+    });
+
+    it('should return all data when no sources filter', async () => {
+      const response = await request(multiSourceApp).get('/api/data');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(2);
+      expect(response.body.sources).toBeUndefined();
+    });
+
+    it('should return empty array for unknown source', async () => {
+      const response = await request(multiSourceApp).get('/api/data?sources=Unknown');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(0);
+    });
+
+    it('should combine sources filter with sort and limit', async () => {
+      const response = await request(multiSourceApp).get('/api/data?sources=Source1,Source2&sort=asc&limit=1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(1);
+      expect(response.body.data[0].title).toBe('Source 1 Event'); // Oldest first
     });
   });
 });

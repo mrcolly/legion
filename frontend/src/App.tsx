@@ -2,19 +2,34 @@
  * Main application component
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Globe } from './components/Globe';
 import { InfoPanel } from './components/InfoPanel';
 import { SettingsMenu } from './components/SettingsMenu';
 import { useGeoData } from './hooks/useGeoData';
 import { useMovingObjects } from './hooks/useMovingObjects';
+import { useSourceFilter } from './hooks/useSourceFilter';
 import { isDaytime } from './utils/helpers';
 import { logger } from './utils/logger';
 import type { GeoDataPoint } from './types/GeoData';
 import './App.css';
 
 function App() {
-  // Data hook
+  // Source filter hook
+  const {
+    availableSources,
+    activeSources,
+    toggleSource,
+    isSourceActive,
+  } = useSourceFilter();
+
+  // Memoize sources for useGeoData to prevent unnecessary re-fetches
+  const geoDataSources = useMemo(
+    () => (activeSources.length > 0 ? activeSources : undefined),
+    [activeSources]
+  );
+
+  // Data hook with source filtering
   const {
     data,
     loading,
@@ -24,7 +39,7 @@ function App() {
     newDataCount,
     pendingEvents,
     dismissEvent,
-  } = useGeoData();
+  } = useGeoData({ sources: geoDataSources });
 
   // Moving objects hook (satellites, aircraft, etc.)
   const { objects: movingObjects } = useMovingObjects();
@@ -34,6 +49,15 @@ function App() {
   const [autoRotate, setAutoRotate] = useState(true);
   const [dayMode, setDayMode] = useState(isDaytime);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showMovingObjects, setShowMovingObjects] = useState(() => {
+    const saved = localStorage.getItem('legion-show-moving-objects');
+    return saved !== null ? saved === 'true' : true; // Default to true
+  });
+
+  // Persist moving objects preference
+  useEffect(() => {
+    localStorage.setItem('legion-show-moving-objects', String(showMovingObjects));
+  }, [showMovingObjects]);
 
   // ---------------------------------------------------------------------------
   // Logging
@@ -82,6 +106,10 @@ function App() {
     setDayMode(enabled);
   }, []);
 
+  const handleMovingObjectsChange = useCallback((enabled: boolean) => {
+    setShowMovingObjects(enabled);
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Error state
   // ---------------------------------------------------------------------------
@@ -120,7 +148,7 @@ function App() {
           pendingEvents={pendingEvents}
           autoRotate={autoRotate}
           dayMode={dayMode}
-          movingObjects={movingObjects}
+          movingObjects={showMovingObjects ? movingObjects : []}
           onPointClick={handlePointClick}
           onEventDismiss={dismissEvent}
         />
@@ -134,6 +162,13 @@ function App() {
         onAutoRotateChange={handleAutoRotateChange}
         dayMode={dayMode}
         onDayModeChange={handleDayModeChange}
+        availableSources={availableSources}
+        activeSources={activeSources}
+        onToggleSource={toggleSource}
+        isSourceActive={isSourceActive}
+        showMovingObjects={showMovingObjects}
+        onMovingObjectsChange={handleMovingObjectsChange}
+        movingObjectsCount={movingObjects.length}
       />
 
       {/* Info panel */}

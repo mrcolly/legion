@@ -53,7 +53,8 @@ export const Globe = memo(function Globe({
   onEventDismiss,
 }: GlobeProps) {
   // Refs
-  const globeRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globeRef = useRef<any>(null); // GlobeGL doesn't export its ref type
   const containerRef = useRef<HTMLDivElement>(null);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
@@ -285,7 +286,7 @@ export const Globe = memo(function Globe({
         const deltaSeconds = (time2 - time1) / 1000;
         
         if (deltaSeconds > 0) {
-          let latPerSec = (pos2.latitude - pos1.latitude) / deltaSeconds;
+          const latPerSec = (pos2.latitude - pos1.latitude) / deltaSeconds;
           let lngPerSec = (pos2.longitude - pos1.longitude) / deltaSeconds;
           
           // Handle longitude wrap-around
@@ -401,8 +402,12 @@ export const Globe = memo(function Globe({
 
   // ---------------------------------------------------------------------------
   // Transform data to globe points (with stable references to prevent re-animation)
+  // Using ref as stable cache - intentionally accessing during render for performance.
+  // This pattern ensures globe points maintain stable object references to prevent
+  // re-animation every render, while still updating when data changes.
   // ---------------------------------------------------------------------------
   const globePoints: GlobePoint[] = useMemo(() => {
+    /* eslint-disable react-hooks/refs */
     logger.debug({ pointCount: data.length }, 'Transforming data to globe points');
 
     const scatteredPositions = scatterCrowdedPoints(data);
@@ -444,9 +449,10 @@ export const Globe = memo(function Globe({
         cache.delete(id);
       }
     }
+    /* eslint-enable react-hooks/refs */
 
     return result;
-  }, [data, movingObjects]);
+  }, [data]);
 
   // ---------------------------------------------------------------------------
   // Auto-rotation helpers
@@ -665,21 +671,24 @@ export const Globe = memo(function Globe({
   // Cleanup
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    // Capture ref values for cleanup
+    const globeInstance = globeRef.current;
+    const trajectoryLines = trajectoryLinesRef.current;
+    
     return () => {
       if (autoRotateTimeoutRef.current) {
         clearTimeout(autoRotateTimeoutRef.current);
       }
       // Clean up trajectory lines
-      const globe = globeRef.current;
-      if (globe) {
-        const scene = globe.scene();
-        for (const line of trajectoryLinesRef.current.values()) {
+      if (globeInstance) {
+        const scene = globeInstance.scene();
+        for (const line of trajectoryLines.values()) {
           scene?.remove(line);
           line.geometry.dispose();
           (line.material as THREE.Material).dispose();
         }
       }
-      trajectoryLinesRef.current.clear();
+      trajectoryLines.clear();
     };
   }, []);
 
@@ -712,8 +721,9 @@ export const Globe = memo(function Globe({
         objectLat="lat"
         objectLng="lng"
         objectAltitude="alt"
-        objectThreeObject={(d: any) => {
-          const color = new THREE.Color(d.color || '#00ff88');
+        objectThreeObject={(d: object) => {
+          const data = d as { color?: string };
+          const color = new THREE.Color(data.color || '#00ff88');
           const geometry = new THREE.SphereGeometry(0.5, 16, 16);
           const material = new THREE.MeshBasicMaterial({ 
             color,
@@ -723,17 +733,18 @@ export const Globe = memo(function Globe({
           return new THREE.Mesh(geometry, material);
         }}
         objectLabel={() => ''}
-        onObjectClick={(obj: any) => {
+        onObjectClick={(obj: object | null) => {
           try {
-            if (obj && typeof obj === 'object' && obj.id) {
+            const data = obj as { id?: string; name?: string; type?: string; lat?: number; lng?: number } | null;
+            if (data && data.id) {
               handleInteraction();
               const point: GeoDataPoint = {
-                id: obj.id,
-                title: obj.name || 'Unknown',
-                description: `Type: ${obj.type || 'unknown'}`,
+                id: data.id,
+                title: data.name || 'Unknown',
+                description: `Type: ${data.type || 'unknown'}`,
                 source: 'Satellite Tracking',
                 timestamp: new Date().toISOString(),
-                location: { latitude: obj.lat || 0, longitude: obj.lng || 0 },
+                location: { latitude: data.lat || 0, longitude: data.lng || 0 },
               };
               onPointClick?.(point);
             }
@@ -741,7 +752,7 @@ export const Globe = memo(function Globe({
             // Ignore click errors
           }
         }}
-        onObjectHover={(obj: any) => {
+        onObjectHover={(obj: object | null) => {
           if (obj) {
             pauseAutoRotate();
             if (autoRotateTimeoutRef.current) {

@@ -376,6 +376,148 @@ describe('DataAggregator', () => {
     });
   });
 
+  describe('source filtering', () => {
+    it('should filter cached data by source name', async () => {
+      const mockData1: Omit<GeoDataPoint, 'hash'>[] = [
+        {
+          id: 'test-1',
+          timestamp: new Date(),
+          location: { latitude: 40.7128, longitude: -74.006 },
+          title: 'Event from Source 1',
+          source: 'Source1',
+        },
+      ];
+
+      const mockData2: Omit<GeoDataPoint, 'hash'>[] = [
+        {
+          id: 'test-2',
+          timestamp: new Date(),
+          location: { latitude: 51.5074, longitude: -0.1278 },
+          title: 'Event from Source 2',
+          source: 'Source2',
+        },
+      ];
+
+      const source1 = new MockDataSource('Source1', mockData1);
+      const source2 = new MockDataSource('Source2', mockData2);
+
+      aggregator.registerSource(source1);
+      aggregator.registerSource(source2);
+      await aggregator.fetchAll();
+
+      // Filter by Source1 only
+      const filtered = aggregator.getCachedData(['Source1']);
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].source).toBe('Source1');
+    });
+
+    it('should filter by multiple sources', async () => {
+      const mockData1: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-1', timestamp: new Date(), location: { latitude: 40, longitude: -74 }, title: 'Event 1', source: 'Source1' },
+      ];
+      const mockData2: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-2', timestamp: new Date(), location: { latitude: 51, longitude: -0.1 }, title: 'Event 2', source: 'Source2' },
+      ];
+      const mockData3: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-3', timestamp: new Date(), location: { latitude: 35, longitude: 139 }, title: 'Event 3', source: 'Source3' },
+      ];
+
+      aggregator.registerSource(new MockDataSource('Source1', mockData1));
+      aggregator.registerSource(new MockDataSource('Source2', mockData2));
+      aggregator.registerSource(new MockDataSource('Source3', mockData3));
+      await aggregator.fetchAll();
+
+      const filtered = aggregator.getCachedData(['Source1', 'Source3']);
+      expect(filtered).toHaveLength(2);
+      expect(filtered.map(p => p.source).sort()).toEqual(['Source1', 'Source3']);
+    });
+
+    it('should be case-insensitive when filtering', async () => {
+      const mockData: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-1', timestamp: new Date(), location: { latitude: 40, longitude: -74 }, title: 'Event 1', source: 'MySource' },
+      ];
+
+      aggregator.registerSource(new MockDataSource('MySource', mockData));
+      await aggregator.fetchAll();
+
+      const filtered = aggregator.getCachedData(['mysource']);
+      expect(filtered).toHaveLength(1);
+    });
+
+    it('should return all data when no filter provided', async () => {
+      const mockData1: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-1', timestamp: new Date(), location: { latitude: 40, longitude: -74 }, title: 'Event 1', source: 'Source1' },
+      ];
+      const mockData2: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-2', timestamp: new Date(), location: { latitude: 51, longitude: -0.1 }, title: 'Event 2', source: 'Source2' },
+      ];
+
+      aggregator.registerSource(new MockDataSource('Source1', mockData1));
+      aggregator.registerSource(new MockDataSource('Source2', mockData2));
+      await aggregator.fetchAll();
+
+      expect(aggregator.getCachedData()).toHaveLength(2);
+      expect(aggregator.getCachedData([])).toHaveLength(2);
+      expect(aggregator.getCachedData(undefined)).toHaveLength(2);
+    });
+
+    it('should return available source names', () => {
+      aggregator.registerSource(new MockDataSource('Source1'));
+      aggregator.registerSource(new MockDataSource('Source2'));
+      aggregator.registerSource(new MockDataSource('Source3'));
+
+      const names = aggregator.getAvailableSourceNames();
+      expect(names).toHaveLength(3);
+      expect(names).toContain('Source1');
+      expect(names).toContain('Source2');
+      expect(names).toContain('Source3');
+    });
+
+    it('should return source info with point counts', async () => {
+      const mockData1: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-1', timestamp: new Date(), location: { latitude: 40, longitude: -74 }, title: 'Event 1', source: 'Source1' },
+        { id: 'test-2', timestamp: new Date(), location: { latitude: 41, longitude: -75 }, title: 'Event 2', source: 'Source1' },
+      ];
+      const mockData2: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-3', timestamp: new Date(), location: { latitude: 51, longitude: -0.1 }, title: 'Event 3', source: 'Source2' },
+      ];
+
+      aggregator.registerSource(new MockDataSource('Source1', mockData1));
+      aggregator.registerSource(new MockDataSource('Source2', mockData2));
+      await aggregator.fetchAll();
+
+      const info = aggregator.getSourcesInfo();
+      expect(info).toHaveLength(2);
+      
+      const source1Info = info.find(s => s.name === 'Source1');
+      expect(source1Info?.pointCount).toBe(2);
+      expect(source1Info?.enabled).toBe(true);
+
+      const source2Info = info.find(s => s.name === 'Source2');
+      expect(source2Info?.pointCount).toBe(1);
+    });
+
+    it('should get data by specific source', async () => {
+      const mockData1: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-1', timestamp: new Date(), location: { latitude: 40, longitude: -74 }, title: 'Event 1', source: 'Source1' },
+      ];
+      const mockData2: Omit<GeoDataPoint, 'hash'>[] = [
+        { id: 'test-2', timestamp: new Date(), location: { latitude: 51, longitude: -0.1 }, title: 'Event 2', source: 'Source2' },
+      ];
+
+      aggregator.registerSource(new MockDataSource('Source1', mockData1));
+      aggregator.registerSource(new MockDataSource('Source2', mockData2));
+      await aggregator.fetchAll();
+
+      const source1Data = aggregator.getDataBySource('Source1');
+      expect(source1Data).toHaveLength(1);
+      expect(source1Data[0].source).toBe('Source1');
+
+      const unknownData = aggregator.getDataBySource('Unknown');
+      expect(unknownData).toHaveLength(0);
+    });
+  });
+
   describe('streaming data points', () => {
     it('should handle streamed data points immediately', async () => {
       const source = new MockDataSource('StreamSource');

@@ -46,7 +46,7 @@ export const EventToast = memo(function EventToast({ event, position, duration =
       top: `${position.y}px`,
       transform: 'translate(-50%, -100%) translateY(-20px)',
     };
-  }, [position?.x, position?.y]);
+  }, [position]);
 
   // Memoize class name
   const className = useMemo(() => {

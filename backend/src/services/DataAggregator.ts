@@ -293,10 +293,44 @@ export class DataAggregator extends EventEmitter {
   }
 
   /**
-   * Get cached data
+   * Get cached data (optionally filtered by sources)
    */
-  getCachedData(): GeoDataPoint[] {
-    return [...this.cache];
+  getCachedData(sourcesFilter?: string[]): GeoDataPoint[] {
+    // If no filter, return all cached data
+    if (!sourcesFilter || sourcesFilter.length === 0) {
+      return [...this.cache];
+    }
+
+    // Filter by source names (case-insensitive)
+    const normalizedFilter = new Set(sourcesFilter.map(s => s.toLowerCase()));
+    return this.cache.filter(point => 
+      point.source && normalizedFilter.has(point.source.toLowerCase())
+    );
+  }
+
+  /**
+   * Get data for specific sources only
+   */
+  getDataBySource(sourceName: string): GeoDataPoint[] {
+    return this.sourceData.get(sourceName) || [];
+  }
+
+  /**
+   * Get list of available source names
+   */
+  getAvailableSourceNames(): string[] {
+    return Array.from(this.sources.keys());
+  }
+
+  /**
+   * Get source info (name, enabled status, point count)
+   */
+  getSourcesInfo(): Array<{ name: string; enabled: boolean; pointCount: number }> {
+    return Array.from(this.sources.entries()).map(([name, source]) => ({
+      name,
+      enabled: source.isEnabled(),
+      pointCount: (this.sourceData.get(name) || []).length,
+    }));
   }
 
   /**
