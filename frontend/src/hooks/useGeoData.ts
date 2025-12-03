@@ -78,7 +78,11 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
     }
 
     try {
-      setLoading(true);
+      // Only show loading spinner on initial load (when we have no data yet)
+      const isInitialLoad = dataMapRef.current.size === 0;
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
 
       logger.debug({ limit, sources }, 'Fetching geo data');
