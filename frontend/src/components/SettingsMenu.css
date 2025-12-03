@@ -45,6 +45,26 @@
   padding: 12px;
   min-width: 160px;
   animation: slideUp 0.2s ease-out;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for settings panel */
+.settings-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.settings-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.settings-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes slideUp {
@@ -167,6 +187,9 @@
 
   .settings-panel {
     min-width: 150px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .settings-label {
@@ -205,6 +228,10 @@
     left: auto;
     right: 0;
     padding: 10px;
+    /* Make scrollable if content is too tall */
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .settings-item {
@@ -246,6 +273,9 @@
   .settings-panel {
     bottom: 50px;
     top: auto;
+    max-height: calc(100vh - 70px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .settings-item {
