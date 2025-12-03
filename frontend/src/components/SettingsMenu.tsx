@@ -121,7 +121,6 @@ export const SettingsMenu = memo(function SettingsMenu({
               <div className="settings-section-title">Data Sources</div>
               {availableSources.map((source) => {
                 const active = isSourceActive(source.name);
-                const canDisable = activeSources.length > 1;
                 return (
                   <div key={source.name} className="settings-item source-item">
                     <span className="settings-label source-label">
@@ -134,8 +133,6 @@ export const SettingsMenu = memo(function SettingsMenu({
                       onClick={() => onToggleSource(source.name)}
                       role="menuitemcheckbox"
                       aria-checked={active}
-                      disabled={active && !canDisable}
-                      title={active && !canDisable ? 'At least one source must be active' : ''}
                     >
                       {active ? '✓' : '○'}
                     </button>
