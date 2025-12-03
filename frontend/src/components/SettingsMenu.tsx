@@ -42,7 +42,6 @@ export const SettingsMenu = memo(function SettingsMenu({
   dayMode,
   onDayModeChange,
   availableSources = [],
-  activeSources = [],
   onToggleSource,
   isSourceActive,
   showMovingObjects = true,
