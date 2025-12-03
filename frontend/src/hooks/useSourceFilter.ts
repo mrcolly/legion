@@ -50,11 +50,11 @@ export function useSourceFilter(): UseSourceFilterReturn {
         if (saved) {
           try {
             const parsed = JSON.parse(saved) as string[];
-            // Filter to only include sources that actually exist
+            // Filter to only include sources that actually exist (allow empty array)
             const validSources = parsed.filter(s => 
               sources.some(src => src.name.toLowerCase() === s.toLowerCase())
             );
-            setActiveSources(validSources.length > 0 ? validSources : sources.map(s => s.name));
+            setActiveSources(validSources);
           } catch {
             // Invalid JSON, default to all sources
             setActiveSources(sources.map(s => s.name));
@@ -82,7 +82,7 @@ export function useSourceFilter(): UseSourceFilterReturn {
   // Persist to localStorage when active sources change
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (initialized && activeSources.length > 0) {
+    if (initialized) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(activeSources));
       logger.debug({ activeSources }, 'Source filters saved');
     }
@@ -95,11 +95,6 @@ export function useSourceFilter(): UseSourceFilterReturn {
     setActiveSources(prev => {
       const isActive = prev.some(s => s.toLowerCase() === sourceName.toLowerCase());
       if (isActive) {
-        // Don't allow disabling all sources
-        if (prev.length <= 1) {
-          logger.warn('Cannot disable all sources');
-          return prev;
-        }
         return prev.filter(s => s.toLowerCase() !== sourceName.toLowerCase());
       } else {
         return [...prev, sourceName];
@@ -112,11 +107,8 @@ export function useSourceFilter(): UseSourceFilterReturn {
   }, [availableSources]);
 
   const disableAll = useCallback(() => {
-    // Keep at least the first source active
-    if (availableSources.length > 0) {
-      setActiveSources([availableSources[0].name]);
-    }
-  }, [availableSources]);
+    setActiveSources([]);
+  }, []);
 
   const isSourceActive = useCallback((sourceName: string) => {
     return activeSources.some(s => s.toLowerCase() === sourceName.toLowerCase());
