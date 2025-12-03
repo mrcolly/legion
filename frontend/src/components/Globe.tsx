@@ -70,6 +70,7 @@ export const Globe = memo(function Globe({
   const [eventPositions, setEventPositions] = useState<Map<string, ScreenPosition>>(new Map());
   const [hoveredGlobePoint, setHoveredGlobePoint] = useState<GlobePoint | null>(null);
   const [hoverPosition, setHoverPosition] = useState<ScreenPosition | null>(null);
+  const [hoveredMovingObject, setHoveredMovingObject] = useState<GeoDataPoint | null>(null);
 
   // ---------------------------------------------------------------------------
   // Handle window resize
@@ -219,8 +220,12 @@ export const Globe = memo(function Globe({
   // Update hover position (throttled animation loop) - position is already set in handlePointHover
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!hoveredGlobePoint) {
-      return; // Position already cleared in handlePointHover
+    // Handle either regular points or moving objects
+    const hoveredLat = hoveredGlobePoint?.lat ?? hoveredMovingObject?.location.latitude;
+    const hoveredLng = hoveredGlobePoint?.lng ?? hoveredMovingObject?.location.longitude;
+    
+    if (hoveredLat === undefined || hoveredLng === undefined) {
+      return; // Position already cleared in hover handlers
     }
 
     let animationId: number;
@@ -233,20 +238,20 @@ export const Globe = memo(function Globe({
       const now = Date.now();
       if (now - lastUpdate >= PERFORMANCE.POSITION_UPDATE_INTERVAL) {
         lastUpdate = now;
-        setHoverPosition(getScreenPosition(hoveredGlobePoint.lat, hoveredGlobePoint.lng));
+        setHoverPosition(getScreenPosition(hoveredLat, hoveredLng));
       }
 
       animationId = requestAnimationFrame(updatePosition);
     };
 
-    // Don't set initial position here - already done in handlePointHover
+    // Don't set initial position here - already done in hover handlers
     animationId = requestAnimationFrame(updatePosition);
 
     return () => {
       isRunning = false;
       cancelAnimationFrame(animationId);
     };
-  }, [hoveredGlobePoint, getScreenPosition]);
+  }, [hoveredGlobePoint, hoveredMovingObject, getScreenPosition]);
 
   // ---------------------------------------------------------------------------
   // Zoom scale factor (memoized)
@@ -753,13 +758,31 @@ export const Globe = memo(function Globe({
           }
         }}
         onObjectHover={(obj: object | null) => {
-          if (obj) {
+          const data = obj as { id?: string; name?: string; type?: string; lat?: number; lng?: number } | null;
+          
+          if (data && data.id && data.lat !== undefined && data.lng !== undefined) {
+            // Calculate position immediately
+            const pos = getScreenPosition(data.lat, data.lng);
+            setHoverPosition(pos);
+            
+            // Create a GeoDataPoint for the moving object
+            setHoveredMovingObject({
+              id: data.id,
+              title: data.name || 'Unknown',
+              description: `Type: ${data.type || 'unknown'}`,
+              source: 'Satellite Tracking',
+              timestamp: new Date().toISOString(),
+              location: { latitude: data.lat, longitude: data.lng },
+            });
+            
             pauseAutoRotate();
             if (autoRotateTimeoutRef.current) {
               clearTimeout(autoRotateTimeoutRef.current);
               autoRotateTimeoutRef.current = null;
             }
           } else {
+            setHoveredMovingObject(null);
+            setHoverPosition(null);
             if (autoRotateEnabledRef.current) {
               scheduleAutoRotateResume(AUTO_ROTATE.HOVER_PAUSE_DURATION);
             }
@@ -784,11 +807,21 @@ export const Globe = memo(function Globe({
         />
       ))}
 
-      {/* Hover toast */}
+      {/* Hover toast for regular points */}
       {hoveredGlobePoint && hoverPosition && (
         <EventToast
           key={`hover-${hoveredGlobePoint.data.id}`}
           event={hoveredGlobePoint.data}
+          position={hoverPosition}
+          isHover={true}
+        />
+      )}
+
+      {/* Hover toast for moving objects */}
+      {hoveredMovingObject && hoverPosition && !hoveredGlobePoint && (
+        <EventToast
+          key={`hover-moving-${hoveredMovingObject.id}`}
+          event={hoveredMovingObject}
           position={hoverPosition}
           isHover={true}
         />
