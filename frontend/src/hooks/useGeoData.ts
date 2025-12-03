@@ -67,6 +67,16 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
   // Fetch initial data
   // ---------------------------------------------------------------------------
   const fetchData = useCallback(async () => {
+    // If sources is an empty array, clear data and don't fetch
+    if (sources && sources.length === 0) {
+      logger.debug('No sources selected, clearing data');
+      dataMapRef.current.clear();
+      setData([]);
+      setLoading(false);
+      setLastUpdate(new Date());
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -180,7 +190,11 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
 
   // Subscribe to real-time updates
   useEffect(() => {
-    if (!autoRefresh) return;
+    // Don't subscribe if no sources selected
+    if (!autoRefresh || (sources && sources.length === 0)) {
+      setIsConnected(false);
+      return;
+    }
 
     const unsubscribe = subscribeToUpdates(
       (event) => {
@@ -199,7 +213,7 @@ export function useGeoData(options: UseGeoDataOptions = {}): UseGeoDataReturn {
       clearTimeout(timeout);
       unsubscribe();
     };
-  }, [autoRefresh, handleUpdate, sourcesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoRefresh, handleUpdate, sourcesKey, sources]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset new data count every minute
   useEffect(() => {

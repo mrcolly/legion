@@ -24,10 +24,8 @@ function App() {
   } = useSourceFilter();
 
   // Memoize sources for useGeoData to prevent unnecessary re-fetches
-  const geoDataSources = useMemo(
-    () => (activeSources.length > 0 ? activeSources : undefined),
-    [activeSources]
-  );
+  // Pass empty array when no sources selected (shows no data)
+  const geoDataSources = useMemo(() => activeSources, [activeSources]);
 
   // Data hook with source filtering
   const {
