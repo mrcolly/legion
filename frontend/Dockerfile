@@ -21,6 +21,9 @@ FROM deps AS builder
 ARG VITE_API_URL=http://localhost:3000
 ENV VITE_API_URL=$VITE_API_URL
 
+# Ensure dependencies are installed after copying source
+RUN yarn install --immutable
+
 RUN yarn build
 
 # Production stage - serve with nginx
