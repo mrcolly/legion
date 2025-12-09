@@ -9,7 +9,8 @@ import { createLogger } from '../utils/logger';
  * Emits events when cache is updated
  */
 export class DataAggregator extends EventEmitter {
-  private static readonly MAX_CACHE_SIZE = 5000; // Maximum points to keep in cache
+  private static readonly MAX_CACHE_SIZE = 10000; // Maximum points to keep in cache
+  private static readonly MAX_PER_SOURCE = 2000; // Maximum points per source
   private readonly sources: Map<string, DataSourceService> = new Map();
   private readonly sourceData: Map<string, GeoDataPoint[]> = new Map();
   private readonly seenHashes: Set<string> = new Set(); // Track seen data point hashes
@@ -76,8 +77,17 @@ export class DataAggregator extends EventEmitter {
     }
 
     // Get or create source data array
-    const sourceData = this.sourceData.get(sourceName) || [];
+    let sourceData = this.sourceData.get(sourceName) || [];
     sourceData.push(point);
+    
+    // Enforce per-source limit (keep newest)
+    if (sourceData.length > DataAggregator.MAX_PER_SOURCE) {
+      const removed = sourceData.shift(); // Remove oldest
+      if (removed?.hash) {
+        this.seenHashes.delete(removed.hash);
+      }
+    }
+    
     this.sourceData.set(sourceName, sourceData);
 
     // Add to cache (at the beginning since it's newest)
@@ -134,7 +144,25 @@ export class DataAggregator extends EventEmitter {
       const existingData = this.sourceData.get(sourceName) || [];
       
       // Combine existing + new data for this source
-      const updatedData = [...existingData, ...newData];
+      let updatedData = [...existingData, ...newData];
+      
+      // Enforce per-source limit (keep newest)
+      if (updatedData.length > DataAggregator.MAX_PER_SOURCE) {
+        // Sort by timestamp (newest first) and keep only MAX_PER_SOURCE
+        updatedData.sort((a, b) => {
+          const timeA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : a.timestamp;
+          const timeB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : b.timestamp;
+          return timeB - timeA;
+        });
+        updatedData = updatedData.slice(0, DataAggregator.MAX_PER_SOURCE);
+        
+        this.logger.info({
+          source: sourceName,
+          before: existingData.length + newData.length,
+          after: updatedData.length,
+        }, `Source data trimmed to ${DataAggregator.MAX_PER_SOURCE} points`);
+      }
+      
       this.sourceData.set(sourceName, updatedData);
       
       // Rebuild cache with new data
@@ -370,6 +398,7 @@ export class DataAggregator extends EventEmitter {
     return {
       totalPoints: this.cache.length,
       maxPoints: DataAggregator.MAX_CACHE_SIZE,
+      maxPerSource: DataAggregator.MAX_PER_SOURCE,
       uniqueHashes: this.seenHashes.size,
       sourceCount: this.sourceData.size,
       lastUpdate: this.lastUpdate,

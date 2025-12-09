@@ -65,7 +65,7 @@ export class MastodonSource extends DataSourceService {
       name: 'Mastodon',
       enabled: true,
       refreshInterval: 60000, // 1 minute
-      maxResults: 40, // Per instance
+      maxResults: 20, // Per instance
       ...config,
     });
 
